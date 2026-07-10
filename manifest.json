@@ -1,0 +1,10 @@
+{
+  "id": "whalliam",
+  "name": "Whalliam",
+  "version": "0.1.0",
+  "minAppVersion": "1.6.0",
+  "description": "Embed CodeWhale AI agent as a sidebar chat in Obsidian.",
+  "author": "Kasukabe Tsumugi",
+  "authorUrl": "https://github.com/baendlorel/",
+  "isDesktopOnly": true
+}

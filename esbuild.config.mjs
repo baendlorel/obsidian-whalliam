@@ -1,0 +1,68 @@
+// @ts-check
+import { cpSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import esbuild from 'esbuild';
+import pkg from './package.json' with { type: 'json' };
+
+const watch = process.argv.includes('--watch');
+const outdir = 'dist';
+const staticFiles = [
+  { from: 'manifest.json', to: 'manifest.json' },
+  { from: 'src/styles.css', to: 'styles.css' },
+];
+
+/**
+ * @param {Record<string,any>} replacement
+ */
+function replace(replacement) {
+  readdirSync('dist').forEach((v) => {
+    const p = join('dist', v);
+    console.log('replacing', p);
+    let content = readFileSync(p, 'utf-8');
+    Object.entries(replacement).forEach(([k, v]) => (content = content.replaceAll(k, v)));
+    writeFileSync(p, content);
+  });
+}
+
+function prepareDist() {
+  if (!watch) {
+    rmSync(outdir, { recursive: true, force: true });
+  }
+
+  mkdirSync(outdir, { recursive: true });
+
+  staticFiles.map(({ from, to }) => {
+    const destination = join(outdir, to);
+    mkdirSync(dirname(destination), { recursive: true });
+    cpSync(from, destination);
+  });
+}
+
+prepareDist();
+
+const ctx = await esbuild.context({
+  entryPoints: ['src/main.ts'],
+  bundle: true,
+  external: ['obsidian', 'electron', '@codemirror/state', '@codemirror/view', '@codemirror/language', 'node:child_process'],
+  format: 'cjs',
+  target: 'es2020',
+  platform: 'browser',
+  sourcemap: watch ? 'inline' : false,
+  minify: !process.argv.includes('--test'),
+  logLevel: 'info',
+  plugins: [],
+  outfile: join(outdir, 'main.js'),
+});
+
+if (watch) {
+  await ctx.watch();
+  console.log('Watching for changes...');
+} else {
+  await ctx.rebuild();
+  await ctx.dispose();
+  replace({
+    __VERSION__: pkg.version,
+    __YEAR__: new Date().getFullYear(),
+    __PKG_NAME__: pkg.name,
+  });
+}
