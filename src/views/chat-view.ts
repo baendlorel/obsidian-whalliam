@@ -39,6 +39,7 @@ export class ChatView extends ItemView {
   private lastRenderLen = 0;
   private assistantBuffer = '';
   private renderTimer: number | null = null;
+  private thoughts: HTMLElement[] = [];
   private reasoningEl: HTMLElement | null = null;
   private reasoningBody: HTMLElement | null = null;
 
@@ -143,6 +144,7 @@ export class ChatView extends ItemView {
     this.threadId = null;
     this.assistantEl = null;
     this.assistantBody = null;
+    this.thoughts = [];
     this.renderedEl = null;
     this.pendingEl = null;
     this.lastRenderLen = 0;
@@ -352,6 +354,7 @@ export class ChatView extends ItemView {
   private startAssistant(): void {
     this.reasoningEl = null;
     this.reasoningBody = null;
+    this.thoughts = [];
     this.assistantBuffer = '';
     this.renderedEl = null;
     this.pendingEl = null;
@@ -368,8 +371,11 @@ export class ChatView extends ItemView {
 
   /** Create a collapsible reasoning panel above the reply bubble. */
   private startReasoning(): void {
-    if (this.reasoningEl || !this.assistantEl || !this.assistantBody) {
-      return;
+    if (!this.assistantEl || !this.assistantBody) { return; }
+    // Finish the previous reasoning block so it renders as done
+    if (this.reasoningEl) {
+      this.reasoningEl.addClass('is-done');
+      this.thoughts.push(this.reasoningEl);
     }
     const el = document.createElement('div');
     el.className = 'whalliam-reasoning';
@@ -382,10 +388,15 @@ export class ChatView extends ItemView {
   }
 
   private appendReasoning(delta: string): void {
+    if (!this.assistantEl || !this.assistantBody) { return; }
+    // Lazily create reasoning block when item.started was not emitted
+    if (!this.reasoningEl) {
+      this.startReasoning();
+    }
     if (this.reasoningBody) {
       this.reasoningBody.appendText(delta);
-      this.scrollToBottom();
     }
+    this.scrollToBottom();
   }
 
   private appendAssistantDelta(delta: string): void {
@@ -446,7 +457,9 @@ export class ChatView extends ItemView {
   private finishAssistant(): void {
     if (this.reasoningEl) {
       this.reasoningEl.addClass('is-done');
+      this.thoughts.push(this.reasoningEl);
     }
+    for (const el of this.thoughts) { el.addClass('is-done'); }
     if (this.assistantThinking && this.assistantBody) {
       // turn ended with no assistant text
       this.assistantBody.empty();
@@ -456,6 +469,7 @@ export class ChatView extends ItemView {
     this.assistantBuffer = '';
     this.assistantEl = null;
     this.assistantBody = null;
+    this.thoughts = [];
     this.renderedEl = null;
     this.pendingEl = null;
     this.lastRenderLen = 0;
@@ -482,9 +496,16 @@ export class ChatView extends ItemView {
       }
       case 'tool_call':
       case 'tool_result': {
-        const card = this.messagesEl.createDiv({ cls: 'whalliam-tool' });
-        card.createDiv({ cls: 'whalliam-tool-label', text: `${t('工具调用')} · ${item.kind}` });
-        card.createDiv({ cls: 'whalliam-tool-body', text: item.summary || item.detail });
+        // Insert tool cards into the assistant block so they interleave
+        // with reasoning blocks in a linear "chain".
+        if (this.assistantEl && this.assistantBody) {
+          const card = document.createElement('div');
+          card.className = 'whalliam-tool';
+          this.assistantEl.insertBefore(card, this.assistantBody);
+          const label = card.createDiv({ cls: 'whalliam-tool-label' });
+          label.setText(`${t('工具调用')} · ${item.kind}`);
+          card.createDiv({ cls: 'whalliam-tool-body', text: item.summary || item.detail });
+        }
         break;
       }
       case 'error': {
@@ -606,6 +627,7 @@ export class ChatView extends ItemView {
     this.threadId = thread.id;
     this.assistantEl = null;
     this.assistantBody = null;
+    this.thoughts = [];
     this.renderedEl = null;
     this.pendingEl = null;
     this.lastRenderLen = 0;
