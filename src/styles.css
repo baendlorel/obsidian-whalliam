@@ -155,6 +155,13 @@
 .whalliam-msg.is-assistant .markdown-rendered pre { font-size: calc(var(--whalliam-font-size) * 0.88); }
 .whalliam-msg.is-assistant .markdown-rendered hr { margin: 0.5em 0; }
 .whalliam-msg.is-assistant .markdown-rendered blockquote { padding-left: 0.8em; border-left: 2px solid var(--background-modifier-border); margin-left: 0; }
+/* Math (MathJax), callouts, footnotes, kbd, captions, code-block flair */
+.whalliam-msg.is-assistant .markdown-rendered .math { font-size: calc(var(--whalliam-font-size) * 0.95); }
+.whalliam-msg.is-assistant .markdown-rendered .callout { font-size: calc(var(--whalliam-font-size) * 0.95); }
+.whalliam-msg.is-assistant .markdown-rendered .footnotes { font-size: calc(var(--whalliam-font-size) * 0.85); }
+.whalliam-msg.is-assistant .markdown-rendered kbd { font-size: calc(var(--whalliam-font-size) * 0.88); }
+.whalliam-msg.is-assistant .markdown-rendered figcaption { font-size: calc(var(--whalliam-font-size) * 0.85); }
+.whalliam-msg.is-assistant .markdown-rendered .code-block-flair { font-size: calc(var(--whalliam-font-size) * 0.8); }
 
 .whalliam-msg.is-error .whalliam-bubble {
   background: rgba(var(--background-modifier-error-rgb), 0.15);
