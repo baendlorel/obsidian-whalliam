@@ -30,7 +30,7 @@ export class HttpClient {
     }
   }
 
-  async createThread(opts: { mode?: string; model?: string; effort?: string } = {}): Promise<ThreadInfo> {
+  async createThread(opts: { mode?: string; model?: string; effort?: string; workspace?: string } = {}): Promise<ThreadInfo> {
     const body: Record<string, unknown> = {};
     if (opts.mode) {
       body.mode = opts.mode;
@@ -40,6 +40,9 @@ export class HttpClient {
     }
     if (opts.effort) {
       body.effort = opts.effort;
+    }
+    if (opts.workspace) {
+      body.workspace = opts.workspace;
     }
     const res = await fetch(`${this.getBase()}/v1/threads`, {
       method: 'POST',

@@ -15,6 +15,7 @@ export default class WhalliamPlugin extends Plugin {
 
     this.bridge = new CodeWhaleBridge({
       getSettings: () => this.settings,
+      getWorkspace: () => ((this.app.vault.adapter as { getBasePath?: () => string }).getBasePath?.() ?? ''),
       events: {
         onStderr: (line) => console.debug('[whalliam]', line),
         onError: (err) => console.error('[whalliam] process error', err),

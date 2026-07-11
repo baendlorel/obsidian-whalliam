@@ -6,17 +6,21 @@ import type { ProcessEvents } from './types.js';
 
 export interface BridgeOptions {
   getSettings: () => WhalliamSettings;
+  /** Vault root directory to pass as the thread workspace. */
+  getWorkspace?: () => string;
   events?: ProcessEvents;
 }
 
 /** Unified facade over process management and the HTTP runtime API. */
 export class CodeWhaleBridge {
   private readonly getSettings: () => WhalliamSettings;
+  private readonly getWorkspace: (() => string) | undefined;
   readonly process: ProcessManager;
   readonly client: HttpClient;
 
   constructor(opts: BridgeOptions) {
     this.getSettings = opts.getSettings;
+    this.getWorkspace = opts.getWorkspace;
     this.process = new ProcessManager(opts.events ?? {});
     this.client = new HttpClient(
       () => runtimeBase(this.getSettings().port),
@@ -58,7 +62,8 @@ export class CodeWhaleBridge {
 
   createThread(): Promise<ThreadInfo> {
     const s = this.getSettings();
-    return this.client.createThread({ mode: s.mode, model: s.model, effort: s.effort });
+    const workspace = this.getWorkspace?.();
+    return this.client.createThread({ mode: s.mode, model: s.model, effort: s.effort, workspace });
   }
 
   sendTurn(threadId: string, prompt: string): Promise<TurnInfo> {
