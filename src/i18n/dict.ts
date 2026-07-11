@@ -30,4 +30,6 @@ export const dict = {
   '打开 Whalliam 聊天面板': 'Open Whalliam chat panel',
   '点击取消上下文': 'Click to detach from context',
   '点击添加为上下文': 'Click to attach as context',
+  '思考过程': 'Reasoning',
+  '响应超时，请重试': 'Response timed out, please retry',
 };

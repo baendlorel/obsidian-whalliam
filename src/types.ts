@@ -94,6 +94,10 @@ export interface RuntimeEventPayload {
   turn?: TurnInfo;
   item?: ThreadItem;
   status?: TurnStatus;
+  /** Incremental text carried by `item.delta` events. */
+  delta?: string;
+  /** The item kind a delta belongs to (agent_reasoning / agent_message). */
+  kind?: string;
 }
 
 /** Discriminated helper: the item carried by an item.* event, if any. */

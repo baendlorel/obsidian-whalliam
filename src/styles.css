@@ -148,6 +148,35 @@
   overflow-y: auto;
 }
 
+/* reasoning panel (agent thought process) */
+.whalliam-reasoning {
+  margin-bottom: 6px;
+  border-left: 2px solid var(--background-modifier-border);
+  padding: 2px 0 2px 8px;
+}
+
+.whalliam-reasoning-head {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-faint);
+  cursor: pointer;
+  user-select: none;
+  margin-bottom: 2px;
+}
+
+.whalliam-reasoning-body {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.45;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.whalliam-reasoning.is-collapsed .whalliam-reasoning-body {
+  display: none;
+}
+
 /* context badge */
 .whalliam-context-bar {
   display: flex;

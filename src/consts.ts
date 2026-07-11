@@ -21,3 +21,7 @@ export const SERVER_POLL_INTERVAL_MS = 400;
 
 /** Base URL for the runtime API. */
 export const runtimeBase = (port: number): string => `http://127.0.0.1:${port}`;
+
+/** Reconnect delay and cap when the SSE stream drops before a turn completes. */
+export const STREAM_RECONNECT_MS = 1500;
+export const MAX_STREAM_RECONNECTS = 40;

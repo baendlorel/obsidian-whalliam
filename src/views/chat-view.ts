@@ -1,11 +1,13 @@
 import { ItemView, MarkdownRenderer, type TFile, type WorkspaceLeaf } from 'obsidian';
-import { CHAT_VIEW_TYPE } from '../consts.js';
+import { CHAT_VIEW_TYPE, MAX_STREAM_RECONNECTS, STREAM_RECONNECT_MS } from '../consts.js';
 import { t } from '../i18n/index.js';
 import { dtm, escapeHtml } from '../utils.js';
 import type { RuntimeEvent, ThreadItem } from '../types.js';
 import type WhalliamPlugin from '../main.js';
 
 type ConnState = 'off' | 'busy' | 'on' | 'error';
+
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 export class ChatView extends ItemView {
   private readonly plugin: WhalliamPlugin;
@@ -25,6 +27,8 @@ export class ChatView extends ItemView {
   private assistantEl: HTMLElement | null = null;
   private assistantBody: HTMLElement | null = null;
   private assistantThinking = false;
+  private reasoningEl: HTMLElement | null = null;
+  private reasoningBody: HTMLElement | null = null;
 
   constructor(leaf: WorkspaceLeaf, plugin: WhalliamPlugin) {
     super(leaf);
@@ -216,15 +220,31 @@ export class ChatView extends ItemView {
     this.startAssistant();
 
     const rendered = new Set<string>();
+    let lastSeq = 0;
+    let completed = false;
     try {
-      if (!this.threadId) {
-        throw new Error('no active thread');
-      }
-      for await (const evt of this.plugin.bridge.events(this.threadId, ctl.signal)) {
-        await this.handleEvent(evt, turnId, rendered);
-        if (evt.kind === 'turn.completed' && evt.turn_id === turnId) {
-          break;
+      for (let attempt = 0; attempt < MAX_STREAM_RECONNECTS && !completed; attempt += 1) {
+        if (!this.threadId) {
+          throw new Error('no active thread');
         }
+        for await (const evt of this.plugin.bridge.events(this.threadId, ctl.signal)) {
+          if (evt.seq <= lastSeq) {
+            continue; // skip replayed events after a reconnect
+          }
+          lastSeq = evt.seq;
+          await this.handleEvent(evt, turnId, rendered);
+          if (evt.kind === 'turn.completed' && evt.turn_id === turnId) {
+            completed = true;
+            break;
+          }
+        }
+        if (!completed && attempt < MAX_STREAM_RECONNECTS - 1) {
+          console.warn('[whalliam] event stream ended early; reconnecting…');
+          await sleep(STREAM_RECONNECT_MS);
+        }
+      }
+      if (!completed) {
+        this.appendError(t('响应超时，请重试'));
       }
     } catch (e) {
       if ((e as Error)?.name !== 'AbortError') {
@@ -240,7 +260,22 @@ export class ChatView extends ItemView {
     if (evt.turn_id && evt.turn_id !== turnId) {
       return; // ignore replayed history from earlier turns
     }
-    if (evt.kind === 'item.completed' || evt.kind === 'item.failed') {
+    const { kind } = evt;
+    if (kind === 'item.started') {
+      const { item } = evt.payload;
+      if (item?.kind === 'agent_reasoning') {
+        this.startReasoning();
+      }
+    } else if (kind === 'item.delta') {
+      const { delta, kind: dk } = evt.payload;
+      if (delta) {
+        if (dk === 'agent_reasoning') {
+          this.appendReasoning(delta);
+        } else if (dk === 'agent_message') {
+          this.appendAssistantDelta(delta);
+        }
+      }
+    } else if (kind === 'item.completed' || kind === 'item.failed') {
       const { item } = evt.payload;
       if (item && !rendered.has(item.id)) {
         rendered.add(item.id);
@@ -260,6 +295,8 @@ export class ChatView extends ItemView {
   }
 
   private startAssistant(): void {
+    this.reasoningEl = null;
+    this.reasoningBody = null;
     this.assistantEl = this.messagesEl.createDiv({ cls: 'whalliam-msg is-assistant' });
     this.assistantEl.createDiv({ cls: 'whalliam-meta', text: `${t('助手')} · ${dtm(Date.now())}` });
     this.assistantBody = this.assistantEl.createDiv({ cls: 'whalliam-bubble markdown-rendered' });
@@ -269,7 +306,50 @@ export class ChatView extends ItemView {
     this.scrollToBottom();
   }
 
+  /** Create a collapsible reasoning panel above the reply bubble. */
+  private startReasoning(): void {
+    if (this.reasoningEl || !this.assistantEl || !this.assistantBody) {
+      return;
+    }
+    const el = document.createElement('div');
+    el.className = 'whalliam-reasoning';
+    this.assistantEl.insertBefore(el, this.assistantBody);
+    this.reasoningEl = el;
+    const head = el.createDiv({ cls: 'whalliam-reasoning-head', text: `💭 ${t('思考过程')}` });
+    head.addEventListener('click', () => this.toggleReasoning());
+    this.reasoningBody = el.createDiv({ cls: 'whalliam-reasoning-body' });
+    this.scrollToBottom();
+  }
+
+  private appendReasoning(delta: string): void {
+    if (this.reasoningBody) {
+      this.reasoningBody.appendText(delta);
+      this.scrollToBottom();
+    }
+  }
+
+  private appendAssistantDelta(delta: string): void {
+    if (this.assistantBody) {
+      if (this.assistantThinking) {
+        this.assistantBody.empty();
+        this.assistantThinking = false;
+      }
+      this.assistantBody.appendText(delta);
+      this.scrollToBottom();
+    }
+  }
+
+  private toggleReasoning(): void {
+    const el = this.reasoningEl;
+    if (el) {
+      el.toggleClass('is-collapsed', !el.hasClass('is-collapsed'));
+    }
+  }
+
   private finishAssistant(): void {
+    if (this.reasoningEl) {
+      this.reasoningEl.addClass('is-done');
+    }
     if (this.assistantThinking && this.assistantBody) {
       // turn ended with no assistant text
       this.assistantBody.empty();
@@ -277,6 +357,8 @@ export class ChatView extends ItemView {
     }
     this.assistantEl = null;
     this.assistantBody = null;
+    this.reasoningEl = null;
+    this.reasoningBody = null;
     this.assistantThinking = false;
     this.scrollToBottom();
   }
@@ -285,12 +367,12 @@ export class ChatView extends ItemView {
     switch (item.kind) {
       case 'user_message':
         return; // already rendered via appendUser
+      case 'agent_reasoning':
+        return; // already streamed via item.delta
       case 'agent_message': {
         if (this.assistantBody) {
-          if (this.assistantThinking) {
-            this.assistantBody.empty();
-            this.assistantThinking = false;
-          }
+          this.assistantBody.empty();
+          this.assistantThinking = false;
           await MarkdownRenderer.render(this.app, item.detail || item.summary, this.assistantBody, '', this);
         }
         break;
