@@ -2,7 +2,7 @@ import { ItemView, MarkdownRenderer, type TFile, type WorkspaceLeaf } from 'obsi
 import { CHAT_VIEW_TYPE, MAX_STREAM_RECONNECTS, STREAM_RECONNECT_MS } from '../consts.js';
 import { t } from '../i18n/index.js';
 import { dtm, escapeHtml } from '../utils.js';
-import type { RuntimeEvent, ThreadItem, ThreadInfo } from '../types.js';
+import type { RuntimeEvent, ThreadDetail, ThreadItem, ThreadInfo } from '../types.js';
 import type WhalliamPlugin from '../main.js';
 
 type ConnState = 'off' | 'busy' | 'on' | 'error';
@@ -521,19 +521,36 @@ export class ChatView extends ItemView {
       if (threads.length === 0) {
         listEl.createDiv({ cls: 'whalliam-history-empty', text: t('无历史会话') });
       } else {
+        // Render skeleton rows first, then load previews asynchronously
+        const previewMap = new Map<string, HTMLElement>();
         for (const th of threads) {
           const row = listEl.createDiv({ cls: 'whalliam-history-row' });
           if (th.id === this.threadId) {
             row.addClass('is-active');
           }
           const date = th.created_at ? dtm(th.created_at) : '';
-          row.createDiv({ cls: 'whalliam-history-row-id', text: th.id.slice(0, 12) });
+          const previewEl = row.createDiv({
+            cls: 'whalliam-history-row-preview',
+            text: `${t('加载中')}…`,
+          });
+          previewMap.set(th.id, previewEl);
           row.createDiv({
             cls: 'whalliam-history-row-meta',
             text: `${date} · ${th.mode || 'agent'}`,
           });
           row.addEventListener('click', () => void this.switchThread(th));
         }
+
+        // Fetch previews concurrently for all threads
+        void Promise.allSettled(
+          threads.map(async (th) => {
+            try {
+              const detail = await this.plugin.bridge.getThread(th.id);
+              const preview = extractThreadPreview(detail);
+              previewMap.get(th.id)?.setText(preview);
+            } catch { /* keep skeleton text */ }
+          }),
+        );
       }
     } catch (e) {
       listEl.empty();
@@ -544,38 +561,76 @@ export class ChatView extends ItemView {
     }
   }
 
+  /**
+   * Switch to a historical thread, clearing the current message area
+   * immediately and loading the thread's previous turns.
+   */
   private async switchThread(thread: ThreadInfo): Promise<void> {
     this.abortCtl?.abort();
     this.threadId = thread.id;
     this.assistantEl = null;
     this.assistantBody = null;
-    this.showWelcome();
+    // Clear immediately and show loading state
+    this.messagesEl.empty();
+    this.messagesEl.createDiv({
+      cls: 'whalliam-history-loading',
+      text: `${t('加载聊天记录')}…`,
+    });
     this.historyOverlay.hide();
     this.historyOpen = false;
-    // Load history and render previous turns
+
     try {
       const detail = await this.plugin.bridge.getThread(thread.id);
-      if (detail.turns.length > 0) {
-        this.messagesEl.empty();
-        for (const turn of detail.turns) {
-          for (const item of detail.items.filter((i) => i.turn_id === turn.id)) {
-            if (item.kind === 'user_message') {
-              this.appendUserSilent(item.detail || item.summary, item.started_at || turn.created_at);
-            } else if (item.kind === 'agent_message') {
-              this.appendAssistantSilent(item.detail || item.summary, item.started_at || turn.created_at);
-            } else if (item.kind === 'tool_call' || item.kind === 'tool_result') {
-              const card = this.messagesEl.createDiv({ cls: 'whalliam-tool' });
-              card.createDiv({ cls: 'whalliam-tool-label', text: `${t('工具调用')} · ${item.kind}` });
-              card.createDiv({ cls: 'whalliam-tool-body', text: item.summary || item.detail });
-            }
-          }
-        }
-        this.scrollToBottom();
-      } else {
+      this.messagesEl.empty();
+      if (detail.turns.length === 0) {
         this.showWelcome();
+        return;
       }
+
+      // Collect items per turn for ordered rendering
+      const itemsByTurn = new Map<string, typeof detail.items>();
+      for (const item of detail.items) {
+        const list = itemsByTurn.get(item.turn_id);
+        if (list) {
+          list.push(item);
+        } else {
+          itemsByTurn.set(item.turn_id, [item]);
+        }
+      }
+
+      for (const turn of detail.turns) {
+        const turnItems = itemsByTurn.get(turn.id) ?? [];
+        for (const item of turnItems) {
+          this.renderHistoryItem(item, turn.created_at);
+        }
+      }
+      this.scrollToBottom();
     } catch (e) {
       console.error('[whalliam] load history failed', e);
+    }
+  }
+
+  /** Render a single historical item (user / assistant / tool). */
+  private renderHistoryItem(item: ThreadItem, turnCreatedAt: string): void {
+    switch (item.kind) {
+      case 'user_message':
+        this.appendUserSilent(item.detail || item.summary, item.started_at || turnCreatedAt);
+        break;
+      case 'agent_message':
+        this.appendAssistantSilent(item.detail || item.summary, item.started_at || turnCreatedAt);
+        break;
+      case 'tool_call':
+      case 'tool_result': {
+        const card = this.messagesEl.createDiv({ cls: 'whalliam-tool' });
+        card.createDiv({ cls: 'whalliam-tool-label', text: `${t('工具调用')} · ${item.kind}` });
+        card.createDiv({ cls: 'whalliam-tool-body', text: item.summary || item.detail });
+        break;
+      }
+      default: {
+        if (item.summary) {
+          this.messagesEl.createDiv({ cls: 'whalliam-muted', text: item.summary });
+        }
+      }
     }
   }
 
@@ -590,4 +645,22 @@ export class ChatView extends ItemView {
     row.createDiv({ cls: 'whalliam-meta', text: `${t('助手')} · ${dtm(ts ?? Date.now())}` });
     void MarkdownRenderer.render(this.app, text, row.createDiv({ cls: 'whalliam-bubble markdown-rendered' }), '', this);
   }
+
 }
+
+// ----- helpers -----
+
+/** Extract the first user_message detail as a short preview. */
+const extractThreadPreview = (detail: ThreadDetail): string => {
+  for (const turn of detail.turns) {
+    for (const item of detail.items) {
+      if (item.turn_id === turn.id && item.kind === 'user_message') {
+        const text = (item.detail || item.summary || '').trim();
+        if (text) {
+          return text.length > 40 ? `${text.slice(0, 40)}…` : text;
+        }
+      }
+    }
+  }
+  return '';
+};

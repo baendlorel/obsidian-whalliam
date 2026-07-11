@@ -39,6 +39,7 @@ export const dict = {
   加载中: 'Loading',
   无历史会话: 'No history',
   选择会话: 'Select session',
+  加载聊天记录: 'Loading chat history',
   低: 'Low',
   中: 'Medium',
   高: 'High',
