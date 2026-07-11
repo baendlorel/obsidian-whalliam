@@ -1,0 +1,124 @@
+/* Navigation Sidebar */
+.whalliam-nav-sidebar {
+    position: absolute;
+    right: 2px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    z-index: 100;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+
+.whalliam-nav-sidebar.visible {
+    opacity: 0.15;
+    pointer-events: auto;
+}
+
+.whalliam-nav-sidebar.visible:hover {
+    opacity: 1;
+}
+
+.whalliam-nav-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 16px;
+    background: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+}
+
+.whalliam-nav-btn:hover {
+    background: var(--background-secondary);
+    color: var(--text-normal);
+    transform: scale(1.05);
+}
+
+.whalliam-nav-btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+.whalliam-nav-toc-popover {
+    position: absolute;
+    right: 42px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: min(260px, calc(100% - 56px));
+    max-height: min(420px, calc(100% - 32px));
+    z-index: 101;
+    display: flex;
+    flex-direction: column;
+    padding: 8px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: #ffffff;
+    background-image: linear-gradient(var(--background-primary), var(--background-primary));
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+body.theme-dark .whalliam-nav-toc-popover {
+    background-color: #1e1e1e;
+}
+
+.whalliam-nav-toc-title {
+    padding: 4px 6px 8px;
+    color: var(--text-muted);
+    font-size: var(--font-ui-smaller);
+    font-weight: 600;
+}
+
+.whalliam-nav-toc-list {
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-height: 0;
+}
+
+.whalliam-nav-toc-item {
+    box-sizing: border-box;
+    min-height: calc(1.35em + 12px);
+    max-width: 100%;
+    padding: 6px 8px;
+    border-radius: 6px;
+    color: var(--text-normal);
+    font-size: var(--font-ui-small);
+    line-height: 1.35;
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.whalliam-nav-toc-item:hover,
+.whalliam-nav-toc-item:focus {
+    background: var(--background-secondary);
+    outline: none;
+}
+
+.whalliam-nav-toc-empty {
+    padding: 8px;
+    color: var(--text-muted);
+    font-size: var(--font-ui-small);
+    line-height: 1.35;
+}
+
+/* Specific button spacing/grouping if needed */
+.whalliam-nav-btn-top {
+    margin-bottom: 4px;
+}
+
+.whalliam-nav-btn-bottom {
+    margin-top: 4px;
+}

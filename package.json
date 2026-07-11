@@ -1,27 +1,41 @@
 {
   "name": "whalliam",
   "version": "0.1.0",
-  "description": "An Obsidian plugin that embeds CodeWhale AI agent as a sidebar chat.",
-  "description_zh": "将 CodeWhale AI 编码代理嵌入 Obsidian 侧边栏聊天的插件。",
+  "description": "Whalliam - CodeWhale embedded in Obsidian sidebar",
+  "main": "main.js",
+  "engines": {
+    "node": ">=24 <25"
+  },
   "scripts": {
-    "check": "tsc --noEmit",
+    "postinstall": "node scripts/postinstall.mjs",
+    "build:css": "node scripts/build-css.mjs",
+    "dev": "pnpm build:css && node esbuild.config.mjs",
+    "build": "node scripts/build.mjs production",
+    "typecheck": "tsc --noEmit",
     "lint": "oxlint -c .oxlintrc.json . --tsconfig tsconfig.json",
     "lint:fix": "oxlint -c .oxlintrc.json . --tsconfig tsconfig.json --fix",
-    "test": "node esbuild.config.mjs --test",
-    "build": "node esbuild.config.mjs",
-    "dev": "node esbuild.config.mjs --watch"
+    "version": "node scripts/sync-version.js && git add manifest.json"
   },
-  "author": {
-    "name": "Kasukabe Tsumugi",
-    "email": "futami16237@gmail.com"
-  },
+  "keywords": [
+    "codewhale",
+    "obsidian",
+    "obsidian-plugin",
+    "productivity",
+    "ide"
+  ],
+  "author": "Kasukabe Tsumugi",
+  "license": "MIT",
   "devDependencies": {
     "@types/node": "^25.8.0",
     "esbuild": "^0.25.4",
     "obsidian": "^1.12.3",
     "oxlint": "^1.72.0",
     "tslib": "^2.8.1",
-    "tsx": "^4.22.0",
     "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "@codemirror/state": "^6.5.0",
+    "@codemirror/view": "^6.38.6",
+    "smol-toml": "^1.6.1"
   }
 }

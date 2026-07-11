@@ -1,0 +1,88 @@
+.whalliam-thinking {
+  color: var(--whalliam-brand);
+  font-style: italic;
+  padding: 4px 0;
+  text-align: start;
+  animation: thinking-pulse 1.5s ease-in-out infinite;
+}
+
+.whalliam-thinking.whalliam-thinking--compact {
+  color: var(--whalliam-compact);
+}
+
+.whalliam-thinking-hint {
+  color: var(--text-muted);
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+.whalliam-thinking-block {
+  margin: 8px 0;
+}
+
+.whalliam-text-block+.whalliam-thinking-block {
+  margin-top: 8px;
+}
+
+.whalliam-thinking-block+.whalliam-text-block {
+  margin-top: 8px;
+}
+
+.whalliam-thinking-block+.whalliam-tool-call {
+  margin-top: 8px;
+}
+
+.whalliam-tool-call+.whalliam-thinking-block {
+  margin-top: 8px;
+}
+
+.whalliam-thinking-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.whalliam-thinking-label {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--whalliam-brand);
+}
+
+/* Thinking block content - tree-branch style */
+.whalliam-thinking-content {
+  padding: 4px 0;
+  padding-inline-start: 24px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  max-height: 400px;
+  overflow-y: auto;
+  border-inline-start: 2px solid var(--background-modifier-border);
+  margin-inline-start: 7px;
+}
+
+.whalliam-thinking-content p {
+  margin: 0 0 8px 0;
+}
+
+.whalliam-thinking-content p:last-child {
+  margin-bottom: 0;
+}
+
+.whalliam-thinking-content .whalliam-code-wrapper {
+  margin: 8px 0;
+}
+
+.whalliam-thinking-content .whalliam-code-wrapper pre {
+  padding: 8px 10px;
+  border-radius: 4px;
+}
+
+.whalliam-thinking-content code {
+  font-family: var(--font-monospace);
+  font-size: 12px;
+}

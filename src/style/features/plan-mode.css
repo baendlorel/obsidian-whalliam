@@ -1,0 +1,103 @@
+/* Plan Mode - inline cards for EnterPlanMode / ExitPlanMode */
+
+.whalliam-plan-approval-inline {
+  font-family: var(--font-monospace);
+  font-size: 12px;
+  outline: none;
+}
+
+.whalliam-plan-inline-title {
+  font-weight: 700;
+  color: var(--text-muted);
+  padding: 6px 10px 0;
+}
+
+/* ── Plan content preview ────────────────────────── */
+
+.whalliam-plan-content-preview {
+  max-height: 300px;
+  overflow-y: auto;
+  margin: 6px 10px 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-normal);
+}
+
+.whalliam-plan-content-preview::-webkit-scrollbar {
+  width: 4px;
+}
+
+.whalliam-plan-content-preview::-webkit-scrollbar-thumb {
+  background: var(--background-modifier-border);
+  border-radius: 2px;
+}
+
+.whalliam-plan-content-preview p {
+  margin: 0 0 6px;
+}
+
+.whalliam-plan-content-preview p:last-child {
+  margin-bottom: 0;
+}
+
+.whalliam-plan-content-preview h1,
+.whalliam-plan-content-preview h2,
+.whalliam-plan-content-preview h3,
+.whalliam-plan-content-preview h4 {
+  margin: 8px 0 4px;
+  font-size: 13px;
+}
+
+.whalliam-plan-content-preview ul,
+.whalliam-plan-content-preview ol {
+  margin: 2px 0 6px;
+  padding-left: 18px;
+}
+
+.whalliam-plan-content-preview li {
+  margin: 0;
+}
+
+.whalliam-plan-content-preview code {
+  font-size: 11px;
+}
+
+.whalliam-plan-content-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--font-monospace);
+}
+
+/* ── Permissions list ──────────────────────────── */
+
+.whalliam-plan-permissions {
+  padding: 4px 10px 8px;
+}
+
+.whalliam-plan-permissions-label {
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.whalliam-plan-permissions-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-normal);
+  line-height: 1.5;
+}
+
+.whalliam-plan-permissions-list li {
+  margin: 0;
+}
+
+/* ── Plan mode input border ──────────────────────── */
+
+.whalliam-input-wrapper.whalliam-input-plan-mode {
+  --whalliam-input-wrapper-border-color: rgb(92, 148, 140);
+  --whalliam-input-wrapper-box-shadow: 0 0 0 1px rgb(92, 148, 140);
+}

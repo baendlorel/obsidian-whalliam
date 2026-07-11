@@ -1,0 +1,211 @@
+/* MCP Server Settings */
+.whalliam-mcp-settings-desc {
+  margin-bottom: 12px;
+}
+
+.whalliam-mcp-container {
+  margin-top: 8px;
+}
+
+.whalliam-mcp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 0 12px;
+}
+
+.whalliam-mcp-label {
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+  font-weight: var(--font-medium);
+}
+
+.whalliam-mcp-add-container {
+  position: relative;
+}
+
+.whalliam-add-mcp-btn {
+  padding: 4px 12px;
+  border-radius: 4px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-size: 12px;
+  cursor: pointer;
+  border: none;
+}
+
+.whalliam-add-mcp-btn:hover {
+  background: var(--interactive-accent-hover);
+}
+
+.whalliam-mcp-add-dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  min-width: 180px;
+  background-color: var(--modal-background, var(--background-primary));
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 100;
+  overflow: hidden;
+}
+
+.whalliam-mcp-add-dropdown.is-visible {
+  display: block;
+}
+
+.whalliam-mcp-add-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-normal);
+}
+
+.whalliam-mcp-add-option:hover {
+  background: var(--background-modifier-hover);
+}
+
+.whalliam-mcp-add-option-icon {
+  display: flex;
+  align-items: center;
+  color: var(--text-muted);
+}
+
+.whalliam-mcp-add-option-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.whalliam-mcp-empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+}
+
+.whalliam-mcp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.whalliam-mcp-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+
+.whalliam-mcp-item:hover {
+  background: var(--background-modifier-hover);
+}
+
+.whalliam-mcp-item-disabled {
+  opacity: 0.6;
+}
+
+.whalliam-mcp-status {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+
+.whalliam-mcp-status-enabled {
+  background: var(--color-green);
+}
+
+.whalliam-mcp-status-disabled {
+  background: var(--text-muted);
+}
+
+.whalliam-mcp-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.whalliam-mcp-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.whalliam-mcp-name {
+  font-weight: 600;
+}
+
+.whalliam-mcp-type-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  background: var(--background-modifier-border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.whalliam-mcp-context-saving-badge {
+  font-size: 11px;
+  padding: 2px 6px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.whalliam-mcp-preview {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.whalliam-mcp-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.whalliam-mcp-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.whalliam-mcp-action-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.whalliam-mcp-action-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.whalliam-mcp-delete-btn:hover {
+  color: var(--text-error);
+}

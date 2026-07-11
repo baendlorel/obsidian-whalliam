@@ -1,0 +1,40 @@
+/* Accessibility - Focus Visible Styles */
+
+/* outline + offset + border-radius */
+.whalliam-tool-header:focus-visible,
+.whalliam-thinking-header:focus-visible,
+.whalliam-subagent-header:focus-visible,
+.whalliam-input-nav-btn:focus-visible,
+.whalliam-model-btn:focus-visible,
+.whalliam-thinking-current:focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* outline + offset only */
+.whalliam-action-btn:focus-visible,
+.whalliam-toggle-switch:focus-visible,
+.whalliam-file-chip:focus-visible,
+.whalliam-image-chip:focus-visible,
+.whalliam-file-chip-remove:focus-visible,
+.whalliam-image-remove:focus-visible,
+.whalliam-image-modal-close:focus-visible,
+.whalliam-approved-remove-btn:focus-visible,
+.whalliam-save-env-btn:focus-visible,
+.whalliam-restore-snippet-btn:focus-visible,
+.whalliam-edit-snippet-btn:focus-visible,
+.whalliam-delete-snippet-btn:focus-visible,
+.whalliam-cancel-btn:focus-visible,
+.whalliam-save-btn:focus-visible,
+.whalliam-code-lang-label:focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 2px;
+}
+
+/* outline + negative offset + border-radius */
+.whalliam-history-item-content:focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: -2px;
+  border-radius: 4px;
+}
