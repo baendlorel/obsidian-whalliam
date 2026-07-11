@@ -2,7 +2,7 @@ import { ItemView, MarkdownRenderer, type TFile, type WorkspaceLeaf } from 'obsi
 import { CHAT_VIEW_TYPE, MAX_STREAM_RECONNECTS, STREAM_RECONNECT_MS } from '../consts.js';
 import { t } from '../i18n/index.js';
 import { dtm, escapeHtml } from '../utils.js';
-import type { RuntimeEvent, ThreadItem } from '../types.js';
+import type { RuntimeEvent, ThreadItem, ThreadInfo } from '../types.js';
 import type WhalliamPlugin from '../main.js';
 
 type ConnState = 'off' | 'busy' | 'on' | 'error';
@@ -24,6 +24,12 @@ export class ChatView extends ItemView {
   private contextBar!: HTMLElement;
   private contextFile: TFile | null = null;
   private contextActive = true;
+  private contextUsageEl!: HTMLElement;
+  private contextPct = 0;
+
+  private historyEl!: HTMLElement;
+  private historyOverlay!: HTMLElement;
+  private historyOpen = false;
 
   private assistantEl: HTMLElement | null = null;
   private assistantBody: HTMLElement | null = null;
@@ -71,15 +77,25 @@ export class ChatView extends ItemView {
     const status = toolbar.createDiv({ cls: 'whalliam-status' });
     this.statusDotEl = status.createDiv({ cls: 'whalliam-status-dot' });
     this.statusTextEl = status.createDiv({ cls: 'whalliam-status-text' });
+    this.contextUsageEl = toolbar.createDiv({ cls: 'whalliam-context-usage' });
+    this.updateContextUsage();
 
     toolbar.createEl('button', { cls: 'whalliam-btn', text: t('新建对话') }, (btn) => {
       btn.addEventListener('click', () => void this.newChat());
+    });
+
+    toolbar.createEl('button', { cls: 'whalliam-btn', text: t('历史会话') }, (btn) => {
+      this.historyEl = btn;
+      btn.addEventListener('click', () => void this.toggleHistory());
     });
 
     this.messagesEl = root.createDiv({ cls: 'whalliam-messages' });
     this.showWelcome();
 
     this.contextBar = root.createDiv({ cls: 'whalliam-context-bar' });
+
+    this.historyOverlay = root.createDiv({ cls: 'whalliam-history-overlay' });
+    this.historyOverlay.hide();
 
     const composer = root.createDiv({ cls: 'whalliam-composer' });
     this.inputEl = composer.createEl('textarea', {
@@ -272,6 +288,10 @@ export class ChatView extends ItemView {
     if (evt.turn_id && evt.turn_id !== turnId) {
       return; // ignore replayed history from earlier turns
     }
+    // Track context usage when reported
+    if (evt.payload.context_usage !== undefined) {
+      this.updateContextUsage(evt.payload.context_usage);
+    }
     const { kind } = evt;
     if (kind === 'item.started') {
       const { item } = evt.payload;
@@ -456,5 +476,118 @@ export class ChatView extends ItemView {
 
   private scrollToBottom(): void {
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
+  }
+
+  // ----- context usage -----
+
+  /** Update the toolbar context usage percentage display. */
+  private updateContextUsage(pct?: number): void {
+    if (pct !== undefined) {
+      this.contextPct = Math.round(pct * 10) / 10;
+    }
+    if (!this.contextUsageEl) {
+      return;
+    }
+    const pctStr = this.contextPct > 0 ? `${this.contextPct}%` : '--';
+    this.contextUsageEl.setText(`${t('上下文用量')}: ${pctStr}`);
+    this.contextUsageEl.removeClass('is-low', 'is-medium', 'is-high');
+    if (this.contextPct >= 60) {
+      this.contextUsageEl.addClass('is-high');
+    } else if (this.contextPct >= 30) {
+      this.contextUsageEl.addClass('is-medium');
+    } else if (this.contextPct > 0) {
+      this.contextUsageEl.addClass('is-low');
+    }
+  }
+
+  // ----- history -----
+
+  private async toggleHistory(): Promise<void> {
+    if (this.historyOpen) {
+      this.historyOverlay.hide();
+      this.historyOpen = false;
+      return;
+    }
+    this.historyOpen = true;
+    this.historyOverlay.empty();
+    this.historyOverlay.createDiv({ cls: 'whalliam-history-title', text: t('选择会话') });
+    const listEl = this.historyOverlay.createDiv({ cls: 'whalliam-history-list' });
+    listEl.createDiv({ cls: 'whalliam-history-loading', text: `${t('加载中')}…` });
+    this.historyOverlay.show();
+
+    try {
+      const threads = await this.plugin.bridge.listThreads({ archived: false });
+      listEl.empty();
+      if (threads.length === 0) {
+        listEl.createDiv({ cls: 'whalliam-history-empty', text: t('无历史会话') });
+      } else {
+        for (const th of threads) {
+          const row = listEl.createDiv({ cls: 'whalliam-history-row' });
+          if (th.id === this.threadId) {
+            row.addClass('is-active');
+          }
+          const date = th.created_at ? dtm(th.created_at) : '';
+          row.createDiv({ cls: 'whalliam-history-row-id', text: th.id.slice(0, 12) });
+          row.createDiv({
+            cls: 'whalliam-history-row-meta',
+            text: `${date} · ${th.mode || 'agent'}`,
+          });
+          row.addEventListener('click', () => void this.switchThread(th));
+        }
+      }
+    } catch (e) {
+      listEl.empty();
+      listEl.createDiv({
+        cls: 'whalliam-history-error',
+        text: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+
+  private async switchThread(thread: ThreadInfo): Promise<void> {
+    this.abortCtl?.abort();
+    this.threadId = thread.id;
+    this.assistantEl = null;
+    this.assistantBody = null;
+    this.showWelcome();
+    this.historyOverlay.hide();
+    this.historyOpen = false;
+    // Load history and render previous turns
+    try {
+      const detail = await this.plugin.bridge.getThread(thread.id);
+      if (detail.turns.length > 0) {
+        this.messagesEl.empty();
+        for (const turn of detail.turns) {
+          for (const item of detail.items.filter((i) => i.turn_id === turn.id)) {
+            if (item.kind === 'user_message') {
+              this.appendUserSilent(item.detail || item.summary, item.started_at || turn.created_at);
+            } else if (item.kind === 'agent_message') {
+              this.appendAssistantSilent(item.detail || item.summary, item.started_at || turn.created_at);
+            } else if (item.kind === 'tool_call' || item.kind === 'tool_result') {
+              const card = this.messagesEl.createDiv({ cls: 'whalliam-tool' });
+              card.createDiv({ cls: 'whalliam-tool-label', text: `${t('工具调用')} · ${item.kind}` });
+              card.createDiv({ cls: 'whalliam-tool-body', text: item.summary || item.detail });
+            }
+          }
+        }
+        this.scrollToBottom();
+      } else {
+        this.showWelcome();
+      }
+    } catch (e) {
+      console.error('[whalliam] load history failed', e);
+    }
+  }
+
+  private appendUserSilent(text: string, ts?: string): void {
+    const row = this.messagesEl.createDiv({ cls: 'whalliam-msg is-user' });
+    row.createDiv({ cls: 'whalliam-meta', text: `${t('你')} · ${dtm(ts ?? Date.now())}` });
+    row.createDiv({ cls: 'whalliam-bubble' }).innerHTML = `<p>${escapeHtml(text)}</p>`;
+  }
+
+  private appendAssistantSilent(text: string, ts?: string): void {
+    const row = this.messagesEl.createDiv({ cls: 'whalliam-msg is-assistant' });
+    row.createDiv({ cls: 'whalliam-meta', text: `${t('助手')} · ${dtm(ts ?? Date.now())}` });
+    void MarkdownRenderer.render(this.app, text, row.createDiv({ cls: 'whalliam-bubble markdown-rendered' }), '', this);
   }
 }

@@ -286,3 +286,93 @@
 .whalliam-send {
   flex: none;
 }
+/* context usage */
+.whalliam-context-usage {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-faint);
+  margin-right: 8px;
+  white-space: nowrap;
+}
+
+.whalliam-context-usage.is-low {
+  color: var(--text-muted);
+}
+
+.whalliam-context-usage.is-medium {
+  color: var(--color-yellow);
+}
+
+.whalliam-context-usage.is-high {
+  color: var(--color-red);
+  font-weight: 600;
+}
+
+/* history overlay */
+.whalliam-history-overlay {
+  position: absolute;
+  top: 36px;
+  right: 8px;
+  width: 260px;
+  max-height: 360px;
+  overflow-y: auto;
+  z-index: 10;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  padding: 0;
+}
+
+.whalliam-history-title {
+  font-size: var(--font-ui-smaller);
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 10px 12px 6px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.whalliam-history-list {
+  padding: 4px 0;
+}
+
+.whalliam-history-row {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--background-modifier-border-hover);
+  transition: background 0.1s ease;
+}
+
+.whalliam-history-row:hover {
+  background: var(--background-modifier-hover);
+}
+
+.whalliam-history-row.is-active {
+  background: color-mix(in srgb, var(--interactive-accent) 12%, transparent);
+}
+
+.whalliam-history-row-id {
+  font-size: var(--font-ui-smaller);
+  font-family: var(--font-monospace);
+  color: var(--text-muted);
+}
+
+.whalliam-history-row-meta {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-faint);
+  margin-top: 2px;
+}
+
+.whalliam-history-loading,
+.whalliam-history-empty,
+.whalliam-history-error {
+  padding: 16px 12px;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.whalliam-history-error {
+  color: var(--text-error);
+}

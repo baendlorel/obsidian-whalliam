@@ -12,6 +12,8 @@ export interface WhalliamSettings {
   model: string;
   /** Working mode passed when creating a thread. */
   mode: string;
+  /** Effort / reasoning budget level when creating a thread. */
+  effort: string;
 }
 
 // ===== CodeWhale Runtime API response types =====
@@ -98,6 +100,8 @@ export interface RuntimeEventPayload {
   delta?: string;
   /** The item kind a delta belongs to (agent_reasoning / agent_message). */
   kind?: string;
+  /** Token / context pressure percentage (0-100), when reported by the runtime. */
+  context_usage?: number;
 }
 
 /** Discriminated helper: the item carried by an item.* event, if any. */

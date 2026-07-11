@@ -30,13 +30,16 @@ export class HttpClient {
     }
   }
 
-  async createThread(opts: { mode?: string; model?: string } = {}): Promise<ThreadInfo> {
+  async createThread(opts: { mode?: string; model?: string; effort?: string } = {}): Promise<ThreadInfo> {
     const body: Record<string, unknown> = {};
     if (opts.mode) {
       body.mode = opts.mode;
     }
     if (opts.model) {
       body.model = opts.model;
+    }
+    if (opts.effort) {
+      body.effort = opts.effort;
     }
     const res = await fetch(`${this.getBase()}/v1/threads`, {
       method: 'POST',
@@ -47,6 +50,20 @@ export class HttpClient {
       throw new Error(await res.text());
     }
     return (await res.json()) as ThreadInfo;
+  }
+
+  async listThreads(opts: { archived?: boolean } = {}): Promise<ThreadInfo[]> {
+    const params = new URLSearchParams();
+    if (opts.archived !== undefined) {
+      params.set('archived', String(opts.archived));
+    }
+    const qs = params.toString();
+    const url = `${this.getBase()}/v1/threads${qs ? `?${qs}` : ''}`;
+    const res = await fetch(url, { headers: this.headers });
+    if (!res.ok) {
+      throw new Error(await res.text());
+    }
+    return (await res.json()) as ThreadInfo[];
   }
 
   async sendTurn(threadId: string, prompt: string): Promise<TurnInfo> {

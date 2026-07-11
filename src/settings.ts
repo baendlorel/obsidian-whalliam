@@ -66,6 +66,19 @@ export class WhalliamSettingTab extends PluginSettingTab {
         }),
     );
 
+    new Setting(containerEl).setName(t('推理力度')).addDropdown((dd) =>
+      dd
+        .addOption('low', t('低'))
+        .addOption('medium', t('中'))
+        .addOption('high', t('高'))
+        .addOption('max', t('最高'))
+        .setValue(this.plugin.settings.effort)
+        .onChange(async (value) => {
+          this.plugin.settings.effort = value;
+          await this.plugin.saveSettings();
+        }),
+    );
+
     new Setting(containerEl).setName(t('加载时自动启动 CodeWhale 服务')).addToggle((tg) =>
       tg.setValue(this.plugin.settings.autoStart).onChange(async (value) => {
         this.plugin.settings.autoStart = value;

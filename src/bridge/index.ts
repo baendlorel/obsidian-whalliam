@@ -58,7 +58,7 @@ export class CodeWhaleBridge {
 
   createThread(): Promise<ThreadInfo> {
     const s = this.getSettings();
-    return this.client.createThread({ mode: s.mode, model: s.model });
+    return this.client.createThread({ mode: s.mode, model: s.model, effort: s.effort });
   }
 
   sendTurn(threadId: string, prompt: string): Promise<TurnInfo> {
@@ -67,6 +67,10 @@ export class CodeWhaleBridge {
 
   getThread(threadId: string): Promise<ThreadDetail> {
     return this.client.getThread(threadId);
+  }
+
+  listThreads(opts?: { archived?: boolean }): Promise<ThreadInfo[]> {
+    return this.client.listThreads(opts);
   }
 
   events(threadId: string, signal: AbortSignal): AsyncGenerator<RuntimeEvent> {

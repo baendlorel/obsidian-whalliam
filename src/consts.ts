@@ -10,6 +10,7 @@ export const DEFAULT_SETTINGS: WhalliamSettings = {
   // your provider expects a different model code.
   model: 'glm-5.2',
   mode: 'agent',
+  effort: 'high',
 };
 
 /** Obsidian ItemView type registered for the chat panel. */
