@@ -1,6 +1,7 @@
 /* Whalliam chat panel */
 
 .whalliam-chat {
+  --whalliam-font-size: 15px;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -76,7 +77,12 @@
   align-items: flex-end;
 }
 
-.whalliam-msg.is-assistant,
+.whalliam-msg.is-assistant {
+  align-self: stretch;
+  align-items: stretch;
+  max-width: 100%;
+}
+
 .whalliam-msg.is-error {
   align-self: flex-start;
   align-items: flex-start;
@@ -105,9 +111,50 @@
 }
 
 .whalliam-msg.is-assistant .whalliam-bubble {
-  background: var(--background-modifier-border);
-  border-bottom-left-radius: 3px;
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  white-space: normal;
 }
+
+/* Rendered markdown inside assistant bubbles. Base size is --whalliam-font-size
+   (defined on .whalliam-chat); all elements scale from it for easy tuning. */
+.whalliam-msg.is-assistant .markdown-rendered {
+  font-size: var(--whalliam-font-size);
+  line-height: 1.5;
+}
+.whalliam-msg.is-assistant .markdown-rendered p,
+.whalliam-msg.is-assistant .markdown-rendered ul,
+.whalliam-msg.is-assistant .markdown-rendered ol,
+.whalliam-msg.is-assistant .markdown-rendered blockquote,
+.whalliam-msg.is-assistant .markdown-rendered table,
+.whalliam-msg.is-assistant .markdown-rendered pre {
+  margin-block: 0.4em;
+}
+.whalliam-msg.is-assistant .markdown-rendered li {
+  margin-block: 0.15em;
+  line-height: 1.5;
+}
+.whalliam-msg.is-assistant .markdown-rendered li > p {
+  margin: 0;
+  line-height: 1.5;
+}
+.whalliam-msg.is-assistant .markdown-rendered h1 { font-size: calc(var(--whalliam-font-size) * 1.35); margin: 0.9em 0 0.3em; }
+.whalliam-msg.is-assistant .markdown-rendered h2 { font-size: calc(var(--whalliam-font-size) * 1.2); margin: 0.8em 0 0.3em; }
+.whalliam-msg.is-assistant .markdown-rendered h3 { font-size: calc(var(--whalliam-font-size) * 1.1); margin: 0.7em 0 0.25em; }
+.whalliam-msg.is-assistant .markdown-rendered h4,
+.whalliam-msg.is-assistant .markdown-rendered h5,
+.whalliam-msg.is-assistant .markdown-rendered h6 { font-size: var(--whalliam-font-size); margin: 0.6em 0 0.25em; }
+.whalliam-msg.is-assistant .markdown-rendered table,
+.whalliam-msg.is-assistant .markdown-rendered td { font-size: calc(var(--whalliam-font-size) * 0.92); }
+.whalliam-msg.is-assistant .markdown-rendered thead th,
+.whalliam-msg.is-assistant .markdown-rendered th { font-size: calc(var(--whalliam-font-size) * 0.92) !important; }
+.whalliam-msg.is-assistant .markdown-rendered td,
+.whalliam-msg.is-assistant .markdown-rendered th { padding: 3px 8px; }
+.whalliam-msg.is-assistant .markdown-rendered code,
+.whalliam-msg.is-assistant .markdown-rendered pre { font-size: calc(var(--whalliam-font-size) * 0.88); }
+.whalliam-msg.is-assistant .markdown-rendered hr { margin: 0.5em 0; }
+.whalliam-msg.is-assistant .markdown-rendered blockquote { padding-left: 0.8em; border-left: 2px solid var(--background-modifier-border); margin-left: 0; }
 
 .whalliam-msg.is-error .whalliam-bubble {
   background: rgba(var(--background-modifier-error-rgb), 0.15);

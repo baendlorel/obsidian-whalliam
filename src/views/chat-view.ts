@@ -27,6 +27,8 @@ export class ChatView extends ItemView {
   private assistantEl: HTMLElement | null = null;
   private assistantBody: HTMLElement | null = null;
   private assistantThinking = false;
+  private assistantBuffer = '';
+  private renderTimer: number | null = null;
   private reasoningEl: HTMLElement | null = null;
   private reasoningBody: HTMLElement | null = null;
 
@@ -297,6 +299,8 @@ export class ChatView extends ItemView {
   private startAssistant(): void {
     this.reasoningEl = null;
     this.reasoningBody = null;
+    this.assistantBuffer = '';
+    this.cancelRender();
     this.assistantEl = this.messagesEl.createDiv({ cls: 'whalliam-msg is-assistant' });
     this.assistantEl.createDiv({ cls: 'whalliam-meta', text: `${t('助手')} · ${dtm(Date.now())}` });
     this.assistantBody = this.assistantEl.createDiv({ cls: 'whalliam-bubble markdown-rendered' });
@@ -329,14 +333,44 @@ export class ChatView extends ItemView {
   }
 
   private appendAssistantDelta(delta: string): void {
-    if (this.assistantBody) {
-      if (this.assistantThinking) {
-        this.assistantBody.empty();
-        this.assistantThinking = false;
-      }
-      this.assistantBody.appendText(delta);
-      this.scrollToBottom();
+    if (!this.assistantBody) {
+      return;
     }
+    if (this.assistantThinking) {
+      this.assistantBody.empty();
+      this.assistantThinking = false;
+    }
+    this.assistantBuffer += delta;
+    this.scheduleRender();
+  }
+
+  /** Throttled re-render of the accumulated buffer as Markdown. */
+  private scheduleRender(): void {
+    if (this.renderTimer !== null) {
+      return;
+    }
+    this.renderTimer = window.setTimeout(() => {
+      this.renderTimer = null;
+      void this.renderAssistantBuffer();
+    }, 600);
+  }
+
+  private cancelRender(): void {
+    if (this.renderTimer !== null) {
+      window.clearTimeout(this.renderTimer);
+      this.renderTimer = null;
+    }
+  }
+
+  private async renderAssistantBuffer(): Promise<void> {
+    if (!this.assistantBody) {
+      return;
+    }
+    this.assistantBody.empty();
+    if (this.assistantBuffer) {
+      await MarkdownRenderer.render(this.app, this.assistantBuffer, this.assistantBody, '', this);
+    }
+    this.scrollToBottom();
   }
 
   private toggleReasoning(): void {
@@ -355,6 +389,8 @@ export class ChatView extends ItemView {
       this.assistantBody.empty();
       this.assistantBody.createDiv({ cls: 'whalliam-muted', text: '—' });
     }
+    this.cancelRender();
+    this.assistantBuffer = '';
     this.assistantEl = null;
     this.assistantBody = null;
     this.reasoningEl = null;
@@ -371,9 +407,10 @@ export class ChatView extends ItemView {
         return; // already streamed via item.delta
       case 'agent_message': {
         if (this.assistantBody) {
-          this.assistantBody.empty();
+          this.assistantBuffer = item.detail || item.summary;
           this.assistantThinking = false;
-          await MarkdownRenderer.render(this.app, item.detail || item.summary, this.assistantBody, '', this);
+          this.cancelRender();
+          await this.renderAssistantBuffer();
         }
         break;
       }
