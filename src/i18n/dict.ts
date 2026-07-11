@@ -28,4 +28,6 @@ export const dict = {
   '工作模式': 'Working mode',
   '加载时自动启动 CodeWhale 服务': 'Automatically start CodeWhale service on load',
   '打开 Whalliam 聊天面板': 'Open Whalliam chat panel',
+  '点击取消上下文': 'Click to detach from context',
+  '点击添加为上下文': 'Click to attach as context',
 };

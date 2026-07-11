@@ -94,6 +94,8 @@
   line-height: 1.5;
   word-break: break-word;
   white-space: pre-wrap;
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .whalliam-msg.is-user .whalliam-bubble {
@@ -144,6 +146,44 @@
   word-break: break-word;
   max-height: 200px;
   overflow-y: auto;
+}
+
+/* context badge */
+.whalliam-context-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 10px 0;
+  min-height: 0;
+}
+
+.whalliam-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: var(--font-ui-smaller);
+  cursor: pointer;
+  background: var(--background-modifier-border);
+  color: var(--text-muted);
+  border: 1px solid transparent;
+  user-select: none;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.whalliam-badge.is-active {
+  background: color-mix(in srgb, var(--interactive-accent) 20%, transparent);
+  color: var(--text-normal);
+  border-color: var(--interactive-accent);
+}
+
+.whalliam-badge:hover {
+  filter: brightness(1.08);
+}
+
+.whalliam-badge-icon {
+  font-size: 0.9em;
 }
 
 /* composer */

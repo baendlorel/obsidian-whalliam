@@ -1,4 +1,4 @@
-import { ItemView, type WorkspaceLeaf } from 'obsidian';
+import { ItemView, MarkdownRenderer, type TFile, type WorkspaceLeaf } from 'obsidian';
 import { CHAT_VIEW_TYPE } from '../consts.js';
 import { t } from '../i18n/index.js';
 import { dtm, escapeHtml } from '../utils.js';
@@ -18,6 +18,9 @@ export class ChatView extends ItemView {
   private inputEl!: HTMLTextAreaElement;
   private statusDotEl!: HTMLElement;
   private statusTextEl!: HTMLElement;
+  private contextBar!: HTMLElement;
+  private contextFile: TFile | null = null;
+  private contextActive = true;
 
   private assistantEl: HTMLElement | null = null;
   private assistantBody: HTMLElement | null = null;
@@ -43,6 +46,8 @@ export class ChatView extends ItemView {
   async onOpen(): Promise<void> {
     this.buildUi();
     this.setConn('off');
+    this.registerEvent(this.app.workspace.on('file-open', (file) => this.refreshContext(file)));
+    this.refreshContext();
     void this.connect();
   }
 
@@ -66,6 +71,8 @@ export class ChatView extends ItemView {
 
     this.messagesEl = root.createDiv({ cls: 'whalliam-messages' });
     this.showWelcome();
+
+    this.contextBar = root.createDiv({ cls: 'whalliam-context-bar' });
 
     const composer = root.createDiv({ cls: 'whalliam-composer' });
     this.inputEl = composer.createEl('textarea', {
@@ -100,7 +107,8 @@ export class ChatView extends ItemView {
       }
       this.setConn('on', t('已连接'));
     } catch (e) {
-      this.setConn('error', t('连接失败，请检查设置'));
+      const msg = e instanceof Error ? e.message : String(e);
+      this.setConn('error', msg.split('\n')[0]?.slice(0, 100) ?? t('连接失败，请检查设置'));
       console.error('[whalliam] connect failed', e);
     }
   }
@@ -145,7 +153,8 @@ export class ChatView extends ItemView {
       if (!this.threadId) {
         this.threadId = (await this.plugin.bridge.createThread()).id;
       }
-      const turn = await this.plugin.bridge.sendTurn(this.threadId, text);
+      const prompt = await this.withNoteContext(text);
+      const turn = await this.plugin.bridge.sendTurn(this.threadId, prompt);
       await this.streamTurn(turn.id);
     } catch (e) {
       this.appendError(e instanceof Error ? e.message : String(e));
@@ -157,6 +166,46 @@ export class ChatView extends ItemView {
   private setBusy(busy: boolean): void {
     this.busy = busy;
     this.inputEl.disabled = busy;
+  }
+
+  /** Prepend the active note's content as context when its badge is active. */
+  private async withNoteContext(message: string): Promise<string> {
+    if (!this.contextActive || !this.contextFile) {
+      return message;
+    }
+    const content = await this.app.vault.read(this.contextFile);
+    if (!content.trim()) {
+      return message;
+    }
+    return `<context file="${this.contextFile.path}">\n${content}\n</context>\n\n${message}`;
+  }
+
+  // ----- context badge -----
+
+  private refreshContext(file?: TFile | null): void {
+    const f = file !== undefined ? file : this.app.workspace.getActiveFile();
+    this.contextFile = f && f.extension === 'md' ? f : null;
+    this.renderContextBadge();
+  }
+
+  private renderContextBadge(): void {
+    this.contextBar.empty();
+    if (!this.contextFile) {
+      return;
+    }
+    const badge = this.contextBar.createEl('span', { cls: 'whalliam-badge' });
+    if (this.contextActive) {
+      badge.addClass('is-active');
+    }
+    badge.createEl('span', { cls: 'whalliam-badge-icon', text: '📄' });
+    badge.createEl('span', { cls: 'whalliam-badge-name', text: this.contextFile.basename });
+    badge.title = this.contextActive ? t('点击取消上下文') : t('点击添加为上下文');
+    badge.addEventListener('click', () => this.toggleContext());
+  }
+
+  private toggleContext(): void {
+    this.contextActive = !this.contextActive;
+    this.renderContextBadge();
   }
 
   /** Subscribe to the event stream and render events for the given turn. */
@@ -172,7 +221,7 @@ export class ChatView extends ItemView {
         throw new Error('no active thread');
       }
       for await (const evt of this.plugin.bridge.events(this.threadId, ctl.signal)) {
-        this.handleEvent(evt, turnId, rendered);
+        await this.handleEvent(evt, turnId, rendered);
         if (evt.kind === 'turn.completed' && evt.turn_id === turnId) {
           break;
         }
@@ -187,7 +236,7 @@ export class ChatView extends ItemView {
     }
   }
 
-  private handleEvent(evt: RuntimeEvent, turnId: string, rendered: Set<string>): void {
+  private async handleEvent(evt: RuntimeEvent, turnId: string, rendered: Set<string>): Promise<void> {
     if (evt.turn_id && evt.turn_id !== turnId) {
       return; // ignore replayed history from earlier turns
     }
@@ -195,7 +244,7 @@ export class ChatView extends ItemView {
       const { item } = evt.payload;
       if (item && !rendered.has(item.id)) {
         rendered.add(item.id);
-        this.renderItem(item);
+        await this.renderItem(item);
       }
     }
   }
@@ -213,7 +262,7 @@ export class ChatView extends ItemView {
   private startAssistant(): void {
     this.assistantEl = this.messagesEl.createDiv({ cls: 'whalliam-msg is-assistant' });
     this.assistantEl.createDiv({ cls: 'whalliam-meta', text: `${t('助手')} · ${dtm(Date.now())}` });
-    this.assistantBody = this.assistantEl.createDiv({ cls: 'whalliam-bubble' });
+    this.assistantBody = this.assistantEl.createDiv({ cls: 'whalliam-bubble markdown-rendered' });
     this.assistantThinking = true;
     this.assistantBody.createDiv({ cls: 'whalliam-thinking', text: `${t('正在思考')}…` });
     this.clearWelcome();
@@ -232,17 +281,17 @@ export class ChatView extends ItemView {
     this.scrollToBottom();
   }
 
-  private renderItem(item: ThreadItem): void {
+  private async renderItem(item: ThreadItem): Promise<void> {
     switch (item.kind) {
       case 'user_message':
         return; // already rendered via appendUser
-      case 'assistant_text': {
+      case 'agent_message': {
         if (this.assistantBody) {
           if (this.assistantThinking) {
             this.assistantBody.empty();
             this.assistantThinking = false;
           }
-          this.assistantBody.insertAdjacentHTML('beforeend', `<p>${escapeHtml(item.detail || item.summary)}</p>`);
+          await MarkdownRenderer.render(this.app, item.detail || item.summary, this.assistantBody, '', this);
         }
         break;
       }

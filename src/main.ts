@@ -59,6 +59,10 @@ export default class WhalliamPlugin extends Plugin {
   async loadSettings(): Promise<void> {
     const data = (await this.loadData()) as Partial<WhalliamSettings>;
     this.settings = { ...DEFAULT_SETTINGS, ...data };
+    // Guard against a persisted empty model (older default) that providers reject.
+    if (!this.settings.model.trim()) {
+      this.settings.model = DEFAULT_SETTINGS.model;
+    }
   }
 
   async saveSettings(): Promise<void> {

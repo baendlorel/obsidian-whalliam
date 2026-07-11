@@ -42,6 +42,12 @@ export class CodeWhaleBridge {
       if (await this.client.health()) {
         return;
       }
+      if (!this.process.running) {
+        const log = this.process.recentLog().trim();
+        throw new Error(
+          `CodeWhale exited (code ${this.process.exitCode}) before becoming ready.${log ? `\n${log}` : ''}`,
+        );
+      }
     }
     throw new Error('CodeWhale server did not become healthy in time');
   }

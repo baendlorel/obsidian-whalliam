@@ -5,7 +5,10 @@ export const DEFAULT_SETTINGS: WhalliamSettings = {
   port: 7878,
   autoStart: false,
   authToken: '',
-  model: '',
+  // The codewhale server's built-in default model is not accepted by every
+  // provider, so we default to a widely-available one. Adjust in settings if
+  // your provider expects a different model code.
+  model: 'glm-5.2',
   mode: 'agent',
 };
 
