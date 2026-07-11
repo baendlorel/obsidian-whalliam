@@ -15,6 +15,7 @@ export class ChatView extends ItemView {
   private threadId: string | null = null;
   private abortCtl: AbortController | null = null;
   private busy = false;
+  private sendBtn!: HTMLButtonElement;
 
   private messagesEl!: HTMLElement;
   private inputEl!: HTMLTextAreaElement;
@@ -92,9 +93,8 @@ export class ChatView extends ItemView {
       }
     });
 
-    composer.createEl('button', { cls: 'whalliam-send', text: t('发送') }, (btn) => {
-      btn.addEventListener('click', () => void this.sendMessage());
-    });
+    this.sendBtn = composer.createEl('button', { cls: 'whalliam-send', text: t('发送') });
+    this.sendBtn.addEventListener('click', () => this.onSendClick());
   }
 
   private showWelcome(): void {
@@ -172,6 +172,16 @@ export class ChatView extends ItemView {
   private setBusy(busy: boolean): void {
     this.busy = busy;
     this.inputEl.disabled = busy;
+    this.sendBtn.setText(busy ? t('中止') : t('发送'));
+  }
+
+  /** Send button acts as send when idle, abort when busy. */
+  private onSendClick(): void {
+    if (this.busy) {
+      this.abortCtl?.abort();
+    } else {
+      void this.sendMessage();
+    }
   }
 
   /** Prepend the active note's content as context when its badge is active. */

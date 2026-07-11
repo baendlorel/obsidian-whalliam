@@ -32,4 +32,5 @@ export const dict = {
   '点击添加为上下文': 'Click to attach as context',
   '思考过程': 'Reasoning',
   '响应超时，请重试': 'Response timed out, please retry',
+  '中止': 'Stop',
 };
