@@ -2,7 +2,7 @@ import { ItemView, MarkdownRenderer, type TFile, type WorkspaceLeaf } from 'obsi
 import { CHAT_VIEW_TYPE, MAX_STREAM_RECONNECTS, STREAM_RECONNECT_MS } from '../consts.js';
 import { t } from '../i18n/index.js';
 import { dtm, escapeHtml } from '../utils.js';
-import type { RuntimeEvent, ThreadDetail, ThreadItem, ThreadInfo } from '../types.js';
+import type { RuntimeEvent, ThreadDetail, ThreadItem, ThreadInfo, TurnInfo } from '../types.js';
 import type WhalliamPlugin from '../main.js';
 
 type ConnState = 'off' | 'busy' | 'on' | 'error';
@@ -34,6 +34,9 @@ export class ChatView extends ItemView {
   private assistantEl: HTMLElement | null = null;
   private assistantBody: HTMLElement | null = null;
   private assistantThinking = false;
+  private renderedEl: HTMLElement | null = null;
+  private pendingEl: HTMLElement | null = null;
+  private lastRenderLen = 0;
   private assistantBuffer = '';
   private renderTimer: number | null = null;
   private reasoningEl: HTMLElement | null = null;
@@ -140,6 +143,9 @@ export class ChatView extends ItemView {
     this.threadId = null;
     this.assistantEl = null;
     this.assistantBody = null;
+    this.renderedEl = null;
+    this.pendingEl = null;
+    this.lastRenderLen = 0;
     this.showWelcome();
     await this.connect();
   }
@@ -176,12 +182,29 @@ export class ChatView extends ItemView {
         this.threadId = (await this.plugin.bridge.createThread()).id;
       }
       const prompt = await this.withNoteContext(text);
-      const turn = await this.plugin.bridge.sendTurn(this.threadId, prompt);
+      const turn = await this.sendTurnWithRetry(prompt);
       await this.streamTurn(turn.id);
     } catch (e) {
       this.appendError(e instanceof Error ? e.message : String(e));
     } finally {
       this.setBusy(false);
+    }
+  }
+
+  /**
+   * Send a turn, retrying on a fresh thread when the current thread
+   * still has an active turn from a client-side abort.
+   */
+  private async sendTurnWithRetry(prompt: string): Promise<TurnInfo> {
+    try {
+      return await this.plugin.bridge.sendTurn(this.threadId!, prompt);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes('already has an active turn')) {
+        this.threadId = (await this.plugin.bridge.createThread()).id;
+        return await this.plugin.bridge.sendTurn(this.threadId, prompt);
+      }
+      throw e;
     }
   }
 
@@ -330,6 +353,9 @@ export class ChatView extends ItemView {
     this.reasoningEl = null;
     this.reasoningBody = null;
     this.assistantBuffer = '';
+    this.renderedEl = null;
+    this.pendingEl = null;
+    this.lastRenderLen = 0;
     this.cancelRender();
     this.assistantEl = this.messagesEl.createDiv({ cls: 'whalliam-msg is-assistant' });
     this.assistantEl.createDiv({ cls: 'whalliam-meta', text: `${t('助手')} · ${dtm(Date.now())}` });
@@ -367,11 +393,16 @@ export class ChatView extends ItemView {
       return;
     }
     if (this.assistantThinking) {
-      this.assistantBody.empty();
       this.assistantThinking = false;
+      this.assistantBody.empty();
+      this.renderedEl = this.assistantBody.createDiv({ cls: 'markdown-rendered' });
+      this.pendingEl = this.assistantBody.createDiv({ cls: 'whalliam-pending' });
     }
     this.assistantBuffer += delta;
+    // Append incremental text into pending area; rendered markdown stays untouched.
+    this.pendingEl?.setText(this.assistantBuffer.slice(this.lastRenderLen));
     this.scheduleRender();
+    this.scrollToBottom();
   }
 
   /** Throttled re-render of the accumulated buffer as Markdown. */
@@ -382,7 +413,7 @@ export class ChatView extends ItemView {
     this.renderTimer = window.setTimeout(() => {
       this.renderTimer = null;
       void this.renderAssistantBuffer();
-    }, 600);
+    }, 500);
   }
 
   private cancelRender(): void {
@@ -393,12 +424,14 @@ export class ChatView extends ItemView {
   }
 
   private async renderAssistantBuffer(): Promise<void> {
-    if (!this.assistantBody) {
+    if (!this.assistantBody || !this.assistantBuffer || !this.renderedEl) {
       return;
     }
-    this.assistantBody.empty();
-    if (this.assistantBuffer) {
-      await MarkdownRenderer.render(this.app, this.assistantBuffer, this.assistantBody, '', this);
+    this.renderedEl.empty();
+    await MarkdownRenderer.render(this.app, this.assistantBuffer, this.renderedEl, '', this);
+    this.lastRenderLen = this.assistantBuffer.length;
+    if (this.pendingEl) {
+      this.pendingEl.setText('');
     }
     this.scrollToBottom();
   }
@@ -423,6 +456,9 @@ export class ChatView extends ItemView {
     this.assistantBuffer = '';
     this.assistantEl = null;
     this.assistantBody = null;
+    this.renderedEl = null;
+    this.pendingEl = null;
+    this.lastRenderLen = 0;
     this.reasoningEl = null;
     this.reasoningBody = null;
     this.assistantThinking = false;
@@ -570,6 +606,9 @@ export class ChatView extends ItemView {
     this.threadId = thread.id;
     this.assistantEl = null;
     this.assistantBody = null;
+    this.renderedEl = null;
+    this.pendingEl = null;
+    this.lastRenderLen = 0;
     // Clear immediately and show loading state
     this.messagesEl.empty();
     this.messagesEl.createDiv({

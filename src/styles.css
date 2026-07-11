@@ -178,6 +178,12 @@
   font-style: italic;
 }
 
+/* incremental pending text (between markdown renders) */
+.whalliam-pending {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 /* tool cards */
 .whalliam-tool {
   align-self: flex-start;
