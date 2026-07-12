@@ -87,10 +87,6 @@ export interface Conversation {
   enabledMcpServers?: string[];
   /** Assistant checkpoint identifier for resumeAtMessageId after rewind. */
   resumeAtMessageId?: string;
-  /** Runtime: the WhalliamView that owns this conversation. Not persisted. */
-  view?: unknown;
-  /** Runtime: the tab ID that owns this conversation. Not persisted. */
-  tabId?: string;
 }
 
 /** Lightweight conversation metadata for the history dropdown. */

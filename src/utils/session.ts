@@ -1,5 +1,5 @@
 /**
- * Claudian - Session Utilities
+ * Whalliam - Session Utilities
  *
  * Session recovery and history reconstruction.
  */

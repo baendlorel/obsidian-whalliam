@@ -350,7 +350,7 @@ export class MessageRenderer {
     textEl.appendText(' ');
     textEl.createSpan({
       cls: 'whalliam-interrupted-hint',
-      text: '\u00B7 What should Claudian do instead?',
+      text: '\u00B7 What should Whalliam do instead?',
     });
   }
 

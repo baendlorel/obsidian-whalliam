@@ -453,8 +453,19 @@ export default class WhalliamPlugin extends Plugin {
     return [...this.conversations];
   }
 
-  findConversationAcrossViews(id: string): Conversation | null {
-    return this.conversations.find(c => c.id === id) ?? null;
+  findConversationAcrossViews(conversationId: string): { view: WhalliamView; tabId: string } | null {
+    for (const view of this.getAllViews()) {
+      const tabManager = view.getTabManager();
+      if (!tabManager) continue;
+
+      const tabs = tabManager.getAllTabs();
+      for (const tab of tabs) {
+        if (tab.conversationId === conversationId) {
+          return { view, tabId: tab.id };
+        }
+      }
+    }
+    return null;
   }
 
   async createConversation(options?: {

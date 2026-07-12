@@ -11,7 +11,7 @@ import { fileURLToPath } from 'url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
 const STYLE_DIR = join(ROOT, 'src', 'style');
-const OUTPUT = join(ROOT, 'styles.css');
+const OUTPUT = join(ROOT, 'dist/styles.css');
 const INDEX_FILE = join(STYLE_DIR, 'index.css');
 
 const IMPORT_PATTERN = /^\s*@import\s+(?:url\()?['"]([^'"]+)['"]\)?\s*;/gm;

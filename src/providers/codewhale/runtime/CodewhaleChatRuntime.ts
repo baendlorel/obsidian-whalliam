@@ -122,6 +122,9 @@ export class CodewhaleChatRuntime implements ChatRuntime {
 
   constructor(plugin: WhalliamPlugin) {
     this.plugin = plugin;
+    const s = getCodewhaleProviderSettings(plugin.settings as Record<string, unknown>);
+    this.httpBase = `http://127.0.0.1:${s.port}`;
+    this.authToken = s.authToken;
   }
 
   // ---- Capabilities ----
@@ -197,6 +200,8 @@ export class CodewhaleChatRuntime implements ChatRuntime {
     _queryOptions?: ChatRuntimeQueryOptions,
   ): AsyncGenerator<StreamChunk> {
     this.turnMetadata = { wasSent: false };
+
+    await this.ensureServer();
 
     if (!this.threadId) {
       const thread = await this.createThread();
@@ -329,9 +334,14 @@ export class CodewhaleChatRuntime implements ChatRuntime {
 
   private async apiFetch(path: string, init?: RequestInit): Promise<Response> {
     const url = `${this.httpBase}${path}`;
+    const hasBody = init?.body != null;
     return fetch(url, {
       ...init,
-      headers: { ...this.headers, ...(init?.headers as Record<string, string> ?? {}) },
+      headers: {
+        ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
+        ...this.headers,
+        ...(init?.headers as Record<string, string> ?? {}),
+      },
     });
   }
 
@@ -368,7 +378,8 @@ export class CodewhaleChatRuntime implements ChatRuntime {
   ): AsyncGenerator<StreamChunk> {
     const res = await this.apiFetch(`/v1/threads/${threadId}/events`, {
       signal,
-    });
+      headers: { 'Accept': 'text/event-stream' },
+    } as RequestInit);
     if (!res.ok || !res.body) {
       throw new Error(`events HTTP ${res.status}`);
     }

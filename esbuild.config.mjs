@@ -99,9 +99,9 @@ const patchRendererUnsafeUnref = {
   name: 'patch-renderer-unsafe-unref',
   setup(build) {
     build.onEnd(async (result) => {
-      if (result.errors.length > 0 || !existsSync('main.js')) return;
+      if (result.errors.length > 0 || !existsSync('dist/main.js')) return;
 
-      const bundlePath = path.join(process.cwd(), 'main.js');
+      const bundlePath = path.join(process.cwd(), 'dist/main.js');
       const originalContents = await fsPromises.readFile(bundlePath, 'utf8');
       const patchedBundle = patchRendererUnsafeUnrefSites(originalContents);
 
@@ -117,7 +117,7 @@ const patchRendererUnsafeUnref = {
           .join('\n');
 
         throw new Error(
-          `Renderer-unsafe timer .unref() calls remain in main.js:\n${details}`,
+          `Renderer-unsafe timer .unref() calls remain in dist/main.js:\n${details}`,
         );
       }
     });
@@ -146,8 +146,9 @@ const copyToObsidian = {
 
       const files = ['main.js', 'manifest.json', 'styles.css'];
       for (const file of files) {
-        if (existsSync(file)) {
-          copyFileSync(file, path.join(OBSIDIAN_PLUGIN_PATH, file));
+        const srcPath = path.join('dist', file);
+        if (existsSync(srcPath)) {
+          copyFileSync(srcPath, path.join(OBSIDIAN_PLUGIN_PATH, file));
           console.log(`Copied ${file} to Obsidian plugin folder`);
         }
       }
@@ -184,7 +185,7 @@ const context = await esbuild.context({
   logLevel: 'info',
   sourcemap: prod ? false : 'inline',
   treeShaking: true,
-  outfile: 'main.js',
+  outfile: 'dist/main.js',
 });
 
 if (prod) {

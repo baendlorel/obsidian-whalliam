@@ -447,11 +447,11 @@ export class InputController {
             this.rollbackFailedTurn(messagesBeforeTurn, hadPendingConversationSave);
           }
           const notice = resolution === 'deleted'
-            ? 'The provider session no longer exists. Its Claudian record was removed; send again to start a new session.'
+            ? 'The provider session no longer exists. Its Whalliam record was removed; send again to start a new session.'
             : resolution === 'reset'
-              ? 'The provider session no longer exists. Claudian preserved the recoverable history; send again to rebuild the session.'
+              ? 'The provider session no longer exists. Whalliam preserved the recoverable history; send again to rebuild the session.'
               : resolution === 'preserved'
-                ? 'The provider session no longer exists. Claudian preserved its record because the remaining history could not be verified.'
+                ? 'The provider session no longer exists. Whalliam preserved its record because the remaining history could not be verified.'
                 : 'The provider session no longer exists. Send again to start a new session.';
           new Notice(notice);
           wasInvalidated = true;
@@ -485,7 +485,7 @@ export class InputController {
       if (!wasInvalidated && state.streamGeneration === streamGeneration) {
         const didCancelThisTurn = wasInterrupted || state.cancelRequested;
         if (didCancelThisTurn && !state.pendingNewSessionPlan) {
-          await streamController.appendText('\n\n<span class="whalliam-interrupted">Interrupted</span> <span class="whalliam-interrupted-hint">· What should Claudian do instead?</span>');
+          await streamController.appendText('\n\n<span class="whalliam-interrupted">Interrupted</span> <span class="whalliam-interrupted-hint">· What should Whalliam do instead?</span>');
         }
         streamController.hideThinkingIndicator();
         state.isStreaming = false;

@@ -97,7 +97,7 @@ export class WhalliamView extends ItemView {
   }
 
   getDisplayText(): string {
-    return 'Claudian';
+    return 'Whalliam';
   }
 
   getIcon(): string {
@@ -284,7 +284,7 @@ export class WhalliamView extends ItemView {
     this.logoEl = titleEl.createSpan({ cls: 'whalliam-logo' });
     this.syncHeaderLogo(DEFAULT_CHAT_PROVIDER_ID);
 
-    titleEl.createEl('h4', { text: 'Claudian', cls: 'whalliam-title-text' });
+    titleEl.createEl('h4', { text: 'Whalliam', cls: 'whalliam-title-text' });
   }
 
   /**
@@ -590,7 +590,7 @@ export class WhalliamView extends ItemView {
 
     const crossViewResult = this.plugin.findConversationAcrossViews(conversationId);
     if (crossViewResult && crossViewResult.view !== this) {
-      const crossViewTab = (crossViewResult.view as any).getTabManager()?.getTab(crossViewResult.tabId);
+      const crossViewTab = crossViewResult.view.getTabManager()?.getTab(crossViewResult.tabId);
       return {
         openState: 'open',
         isRunning: crossViewTab?.state.isStreaming ?? false,
