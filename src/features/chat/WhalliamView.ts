@@ -285,6 +285,24 @@ export class WhalliamView extends ItemView {
     this.syncHeaderLogo(DEFAULT_CHAT_PROVIDER_ID);
 
     titleEl.createEl('h4', { text: 'Whalliam', cls: 'whalliam-title-text' });
+
+    // Shell indicator — shows which shell is used to spawn the backend
+    const shellName = this.detectShellName();
+    const shellTag = titleEl.createSpan({ cls: 'whalliam-shell-tag', text: shellName });
+    shellTag.setAttribute('aria-label', `Backend shell: ${shellName}`);
+  }
+
+  /** Detects the shell used to spawn the codewhale backend process. */
+  private detectShellName(): string {
+    if (process.platform === 'win32') {
+      const comspec = (process.env.COMSPEC ?? '').toLowerCase();
+      if (comspec.includes('powershell') || comspec.includes('pwsh')) return 'PowerShell';
+      // Check for PowerShell Core in PATH
+      if (process.env.PSModulePath) return 'PowerShell';
+      return 'cmd';
+    }
+    // POSIX: bash (hardcoded in startProcess via 'bash -c')
+    return 'bash';
   }
 
   /**

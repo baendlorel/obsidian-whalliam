@@ -577,6 +577,14 @@ export class CodewhaleChatRuntime implements ChatRuntime {
 
       case 'turn.completed': {
         if (isCurrentTurn) {
+          const turn = payload.turn as Record<string, unknown> | undefined;
+          const turnStatus = (turn?.status as string) ?? '';
+          if (turnStatus === 'failed') {
+            chunks.push({
+              type: 'error',
+              content: (turn?.error as string) ?? 'Turn failed',
+            });
+          }
           chunks.push({ type: 'done' });
         }
         break;
@@ -669,27 +677,59 @@ export class CodewhaleChatRuntime implements ChatRuntime {
     } else {
       serverArgs.push('--insecure-no-auth');
     }
-    // Inject skills directory for skill discovery (liuyao, etc.)
+    // Resolve skills directory for CODENWHALE_HOME env (skill discovery)
     let skillsDir = s.skillsDir.trim();
     if (!skillsDir) {
-      // Auto-detect: %USERPROFILE%\.codewhale\skills on Windows, ~/.codewhale/skills on Linux
       const home = process.env.USERPROFILE || process.env.HOME || '';
       if (home) {
         skillsDir = `${home}/.codewhale/skills`;
       }
     }
-    if (skillsDir) {
-      serverArgs.push('--skills-dir', skillsDir);
+
+    // ---- Diagnostic: log startup config ----
+    const codewhaleRoot = `${process.env.HOME || process.env.USERPROFILE || '~'}/.codewhale`;
+    const configHome = codewhaleRoot;
+    const configToml = `${configHome}/config.toml`;
+    const diag: string[] = [
+      `⚡ Codewhale startup diagnostic`,
+      `  cliPath      : ${cliPath} (resolved: ${this.resolveBinary(cliPath)})`,
+      `  port         : ${port}`,
+      `  model (obsidian): ${s.model}`,
+      `  CODENWHALE_HOME: ${codewhaleRoot} (skills at: ${skillsDir || 'default'})`,
+      `  config.toml  : ${configToml}`,
+      `  DEEPSEEK_API_KEY: ${process.env.DEEPSEEK_API_KEY ? '**SET**' : '(not set)'}`,
+      `  DEEPSEEK_BASE_URL: ${process.env.DEEPSEEK_BASE_URL || '(not set)'}`,
+      `  serverArgs   : ${serverArgs.join(' ')}`,
+    ];
+    // Also check config.toml for provider settings
+    try {
+      const { existsSync, readFileSync } = require('node:fs');
+      if (existsSync(configToml)) {
+        const raw = readFileSync(configToml, 'utf-8');
+        const hasProvider = raw.includes('[provider') || raw.includes('provider');
+        const hasApiKey = raw.includes('api_key');
+        diag.push(`  config.toml exists: yes (${raw.length} bytes), has [provider.*]: ${hasProvider}, has api_key: ${hasApiKey}`);
+        // Extract provider block names
+        const providerMatches = raw.match(/\[provider\.(\w+)\]/g);
+        if (providerMatches) {
+          diag.push(`  providers in config: ${providerMatches.map(m => m.replace('[provider.', '').replace(']', '')).join(', ')}`);
+        }
+      } else {
+        diag.push(`  config.toml exists: NO`);
+      }
+    } catch {
+      diag.push(`  config.toml: (could not read)`);
     }
+    diag.forEach(line => {
+      console.log(line);
+      this.logLines.push(line + '\n');
+    });
+    // ---- end diagnostic ----
 
     const isWin = process.platform === 'win32';
     let proc: ChildProcess;
 
     const spawnEnv = { ...process.env };
-    if (skillsDir) {
-      spawnEnv.CODEWHALE_HOME = skillsDir;
-    }
-
     if (isWin) {
       proc = spawn(cliPath, serverArgs, {
         shell: true, stdio: STDIO as any, windowsHide: true,
