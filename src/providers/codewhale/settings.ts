@@ -14,7 +14,7 @@ export interface CodewhaleProviderSettings {
 
 export const DEFAULT_CODEWHALE_PROVIDER_SETTINGS: Readonly<CodewhaleProviderSettings> = Object.freeze({
   cliPath: 'codewhale',
-  port: 7878,
+  port: 7879,
   authToken: '',
   model: 'glm-5.2',
   mode: 'yolo',

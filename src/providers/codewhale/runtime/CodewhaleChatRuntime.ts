@@ -2,6 +2,9 @@ import { spawn, execSync, type ChildProcess } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
 import type WhalliamPlugin from '../../../main';
 import { getVaultPath } from '../../../utils/path';
+import { appendBrowserContext } from '../../../utils/browser';
+import { appendCurrentNote } from '../../../utils/context';
+import { appendEditorContext } from '../../../utils/editor';
 import { getCodewhaleProviderSettings } from '../settings';
 import type { ChatRuntime } from '../../../core/runtime/ChatRuntime';
 import type { ProviderCapabilities } from '../../../core/providers/types';
@@ -146,12 +149,28 @@ export class CodewhaleChatRuntime implements ChatRuntime {
   // ---- Turn Preparation ----
 
   prepareTurn(request: ChatTurnRequest): PreparedChatTurn {
-    const text = request.text ?? '';
+    let text = request.text ?? '';
+    const isCompact = /^\/compact(\s|$)/i.test(text);
+
+    if (!isCompact) {
+      if (request.currentNotePath) {
+        text = appendCurrentNote(text, request.currentNotePath);
+      }
+
+      if (request.editorSelection) {
+        text = appendEditorContext(text, request.editorSelection);
+      }
+
+      if (request.browserSelection) {
+        text = appendBrowserContext(text, request.browserSelection);
+      }
+    }
+
     return {
       request,
       persistedContent: text,
       prompt: text,
-      isCompact: false,
+      isCompact,
       mcpMentions: new Set(),
     };
   }
