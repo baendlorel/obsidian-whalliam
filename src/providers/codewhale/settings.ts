@@ -7,6 +7,7 @@ export interface CodewhaleProviderSettings {
   model: string;
   mode: string;
   effort: string;
+  skillsDir: string;
   customModels: string;
   environmentVariables: string;
 }
@@ -18,6 +19,7 @@ export const DEFAULT_CODEWHALE_PROVIDER_SETTINGS: Readonly<CodewhaleProviderSett
   model: 'glm-5.2',
   mode: 'agent',
   effort: 'high',
+  skillsDir: '',
   customModels: '',
   environmentVariables: '',
 });
@@ -46,6 +48,9 @@ export function getCodewhaleProviderSettings(
     effort: (config.effort as string | undefined)
       ?? (settings.effort as string | undefined)
       ?? DEFAULT_CODEWHALE_PROVIDER_SETTINGS.effort,
+    skillsDir: (config.skillsDir as string | undefined)
+      ?? (settings.codewhaleSkillsDir as string | undefined)
+      ?? DEFAULT_CODEWHALE_PROVIDER_SETTINGS.skillsDir,
     customModels: (config.customModels as string | undefined)
       ?? DEFAULT_CODEWHALE_PROVIDER_SETTINGS.customModels,
     environmentVariables: (config.environmentVariables as string | undefined)

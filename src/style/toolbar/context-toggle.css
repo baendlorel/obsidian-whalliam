@@ -1,0 +1,9 @@
+.whalliam-context-toggle {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+}
+.whalliam-context-toggle.is-active { color: var(--whalliam-brand); }
+.whalliam-context-toggle:not(.is-active) { color: var(--text-muted); opacity: 0.5; }

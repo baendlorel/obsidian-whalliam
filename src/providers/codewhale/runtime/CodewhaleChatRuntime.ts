@@ -1,13 +1,10 @@
 import { spawn, execSync, type ChildProcess } from 'node:child_process';
+import { existsSync, readdirSync } from 'node:fs';
 import type WhalliamPlugin from '../../../main';
 import { getVaultPath } from '../../../utils/path';
 import { getCodewhaleProviderSettings } from '../settings';
-import type {
-  ChatRuntime,
-} from '../../../core/runtime/ChatRuntime';
-import type {
-  ProviderCapabilities,
-} from '../../../core/providers/types';
+import type { ChatRuntime } from '../../../core/runtime/ChatRuntime';
+import type { ProviderCapabilities } from '../../../core/providers/types';
 import type {
   ChatMessage,
   Conversation,
@@ -74,7 +71,7 @@ interface CodeWhaleEvent {
 
 const ORIGIN_FALLBACK = 'app://obsidian.md';
 const MAX_LOG_LINES = 60;
-const STDIO: readonly ['ignore', 'pipe', 'pipe'] = ['ignore', 'pipe', 'pipe'];
+const STDIO = ['ignore', 'pipe', 'pipe'] as const;
 const BOOT_TIMEOUT_MS = 30_000;
 const POLL_INTERVAL_MS = 400;
 
@@ -167,10 +164,7 @@ export class CodewhaleChatRuntime implements ChatRuntime {
 
   setResumeCheckpoint(_checkpointId: string | undefined): void {}
 
-  syncConversationState(
-    conversation: ChatRuntimeConversationState | null,
-    _externalContextPaths?: string[],
-  ): void {
+  syncConversationState(conversation: ChatRuntimeConversationState | null, _externalContextPaths?: string[]): void {
     if (conversation?.sessionId) {
       this.threadId = conversation.sessionId;
     }
@@ -223,13 +217,18 @@ export class CodewhaleChatRuntime implements ChatRuntime {
     yield { type: 'assistant_message_start' };
 
     // Stream events
+    const currentTurnId = codewhaleTurn.id;
     this.abortController = new AbortController();
     const signal = this.abortController.signal;
 
     try {
-      const eventStream = this.streamEvents(this.threadId, signal);
+      const eventStream = this.streamEvents(this.threadId, signal, currentTurnId);
       for await (const chunk of eventStream) {
         yield chunk;
+        if (chunk.type === 'done') {
+          this.abortController.abort();
+          break;
+        }
       }
     } catch (err) {
       if ((err as Error).name === 'AbortError') {
@@ -245,6 +244,7 @@ export class CodewhaleChatRuntime implements ChatRuntime {
 
   cancel(): void {
     this.abortController?.abort();
+    this.threadId = null;
   }
 
   resetSession(): void {
@@ -261,6 +261,29 @@ export class CodewhaleChatRuntime implements ChatRuntime {
 
   async getSupportedCommands(): Promise<SlashCommand[]> {
     return [];
+  }
+
+  /** Count skills loaded from the skills directory. */
+  getSkillCount(): number {
+    try {
+      const s = getCodewhaleProviderSettings(this.plugin.settings as Record<string, unknown>);
+      let skillsDir = s.skillsDir.trim();
+      if (!skillsDir) {
+        const home = process.env.USERPROFILE || process.env.HOME || '';
+        skillsDir = `${home}/.codewhale/skills`;
+      }
+      if (!existsSync(skillsDir)) return 0;
+      return readdirSync(skillsDir, { withFileTypes: true })
+        .filter(d => d.isDirectory())
+        .length;
+    } catch {
+      return 0;
+    }
+  }
+
+  getAuxiliaryModel(): string | null {
+    const count = this.getSkillCount();
+    return count > 0 ? `Skills: ${count} loaded` : null;
   }
 
   cleanup(): void {
@@ -307,10 +330,7 @@ export class CodewhaleChatRuntime implements ChatRuntime {
 
   // ---- Session Updates ----
 
-  buildSessionUpdates(params: {
-    conversation: Conversation | null;
-    sessionInvalidated: boolean;
-  }): SessionUpdateResult {
+  buildSessionUpdates(params: { conversation: Conversation | null; sessionInvalidated: boolean }): SessionUpdateResult {
     const updates: Partial<Conversation> = {};
     if (this.threadId) {
       updates.sessionId = this.threadId;
@@ -340,7 +360,7 @@ export class CodewhaleChatRuntime implements ChatRuntime {
       headers: {
         ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
         ...this.headers,
-        ...(init?.headers as Record<string, string> ?? {}),
+        ...((init?.headers as Record<string, string>) ?? {}),
       },
     });
   }
@@ -349,10 +369,19 @@ export class CodewhaleChatRuntime implements ChatRuntime {
     const s = getCodewhaleProviderSettings(this.plugin.settings as Record<string, unknown>);
     const workspace = getVaultPath(this.plugin.app);
     const body: Record<string, unknown> = {};
+    // Essential: allow shell execution so skills can run scripts (liuyao, etc.)
+    body.allow_shell = true;
+    // YOLO mode: auto-approve tool calls so agent doesn't block on permission
+    body.auto_approve = this.plugin.settings.permissionMode === 'yolo';
     if (s.mode) body.mode = s.mode;
     if (s.model) body.model = s.model;
     if (s.effort) body.effort = s.effort;
     if (workspace) body.workspace = workspace;
+    // Pass system prompt from plugin settings (custom instructions, skills reference, etc.)
+    const systemPrompt = (this.plugin.settings as Record<string, unknown>).systemPrompt as string;
+    if (systemPrompt?.trim()) {
+      body.system_prompt = systemPrompt.trim();
+    }
 
     const res = await this.apiFetch('/v1/threads', {
       method: 'POST',
@@ -375,10 +404,11 @@ export class CodewhaleChatRuntime implements ChatRuntime {
   private async *streamEvents(
     threadId: string,
     signal: AbortSignal,
+    currentTurnId: string,
   ): AsyncGenerator<StreamChunk> {
     const res = await this.apiFetch(`/v1/threads/${threadId}/events`, {
       signal,
-      headers: { 'Accept': 'text/event-stream' },
+      headers: { Accept: 'text/event-stream' },
     } as RequestInit);
     if (!res.ok || !res.body) {
       throw new Error(`events HTTP ${res.status}`);
@@ -402,7 +432,7 @@ export class CodewhaleChatRuntime implements ChatRuntime {
           buffer = buffer.slice(sep + 2);
           const evt = this.parseEvent(raw);
           if (evt) {
-            const chunks = this.mapEventToChunks(evt);
+            const chunks = this.mapEventToChunks(evt, currentTurnId);
             for (const chunk of chunks) {
               yield chunk;
             }
@@ -431,9 +461,17 @@ export class CodewhaleChatRuntime implements ChatRuntime {
     }
   }
 
-  private mapEventToChunks(evt: CodeWhaleEvent): StreamChunk[] {
+  private mapEventToChunks(evt: CodeWhaleEvent, currentTurnId: string): StreamChunk[] {
     const chunks: StreamChunk[] = [];
     const { event, payload } = evt;
+
+    // Only emit done for the current turn, not historical ones from SSE replay
+    const isCurrentTurn = evt.turn_id === currentTurnId;
+
+    // Skip events from other turns (SSE history replay)
+    if (evt.turn_id != null && evt.turn_id !== currentTurnId) {
+      return chunks;
+    }
 
     switch (event) {
       case 'item.delta': {
@@ -480,15 +518,35 @@ export class CodewhaleChatRuntime implements ChatRuntime {
       }
 
       case 'turn.completed': {
-        chunks.push({ type: 'done' });
+        if (isCurrentTurn) {
+          chunks.push({ type: 'done' });
+        }
         break;
       }
 
+      case 'turn.status': {
+        if (isCurrentTurn) {
+          const status = (payload.status as string) ?? '';
+          if (status === 'completed' || status === 'failed') {
+            chunks.push({ type: 'done' });
+          }
+          if (status === 'failed') {
+            chunks.push({
+              type: 'error',
+              content: (payload.error as string) ?? 'Turn failed',
+            });
+          }
+        }
+        break;
+      }
+
+      case 'turn.failed':
       case 'error': {
         chunks.push({
           type: 'error',
           content: (payload.detail as string) ?? (payload.error as string) ?? 'Unknown error',
         });
+        chunks.push({ type: 'done' });
         break;
       }
     }
@@ -544,30 +602,54 @@ export class CodewhaleChatRuntime implements ChatRuntime {
   }
 
   private startProcess(cliPath: string, port: number, token: string): ChildProcess {
+    const s = getCodewhaleProviderSettings(this.plugin.settings as Record<string, unknown>);
     this.logLines.length = 0;
     const origin = getSelfOrigin();
-    const serverArgs = [
-      'app-server', '--http', '--port', String(port), '--cors-origin', origin,
-    ];
+    const serverArgs = ['app-server', '--http', '--port', String(port), '--cors-origin', origin];
     if (token.trim()) {
       serverArgs.push('--auth-token', token.trim());
     } else {
       serverArgs.push('--insecure-no-auth');
     }
+    // Inject skills directory for skill discovery (liuyao, etc.)
+    let skillsDir = s.skillsDir.trim();
+    if (!skillsDir) {
+      // Auto-detect: %USERPROFILE%\.codewhale\skills on Windows, ~/.codewhale/skills on Linux
+      const home = process.env.USERPROFILE || process.env.HOME || '';
+      if (home) {
+        skillsDir = `${home}/.codewhale/skills`;
+      }
+    }
+    if (skillsDir) {
+      serverArgs.push('--skills-dir', skillsDir);
+    }
 
-    const resolved = this.resolveBinary(cliPath);
+    const isWin = process.platform === 'win32';
     let proc: ChildProcess;
 
-    if (resolved.startsWith('/')) {
-      proc = spawn(resolved, serverArgs, { stdio: STDIO } as any);
+    const spawnEnv = { ...process.env };
+    if (skillsDir) {
+      spawnEnv.CODEWHALE_HOME = skillsDir;
+    }
+
+    if (isWin) {
+      proc = spawn(cliPath, serverArgs, {
+        shell: true, stdio: STDIO as any, windowsHide: true,
+        env: spawnEnv,
+      });
     } else {
-      const cmdLine = [
-        '[ -s "$HOME/.nvm/nvm.sh" ] && . "$HOME/.nvm/nvm.sh" 2>/dev/null;',
-        '[ -s "$HOME/.cargo/env" ] && . "$HOME/.cargo/env" 2>/dev/null;',
-        `exec '${cliPath.replace(/'/g, "'\\''")}' `,
-        serverArgs.map(a => `'${a.replace(/'/g, "'\\''")}'`).join(' '),
-      ].join(' ');
-      proc = spawn('bash', ['-c', cmdLine], { stdio: STDIO } as any);
+      const resolved = this.resolveBinary(cliPath);
+      if (resolved.startsWith('/')) {
+        proc = spawn(resolved, serverArgs, { stdio: STDIO, env: spawnEnv } as any);
+      } else {
+        const cmdLine = [
+          '[ -s "$HOME/.nvm/nvm.sh" ] && . "$HOME/.nvm/nvm.sh" 2>/dev/null;',
+          '[ -s "$HOME/.cargo/env" ] && . "$HOME/.cargo/env" 2>/dev/null;',
+          `exec '${cliPath.replace(/'/g, "'\\''")}' `,
+          serverArgs.map((a) => `'${a.replace(/'/g, "'\\''")}'`).join(' '),
+        ].join(' ');
+        proc = spawn('bash', ['-c', cmdLine], { stdio: STDIO, env: spawnEnv } as any);
+      }
     }
 
     this.proc = proc;
@@ -596,11 +678,16 @@ export class CodewhaleChatRuntime implements ChatRuntime {
     if (cliPath.startsWith('/') || process.platform === 'win32') return cliPath;
     try {
       const out = execSync(`command -v '${cliPath.replace(/'/g, "'\\''")}'`, {
-        encoding: 'utf-8', timeout: 8000, stdio: ['ignore', 'pipe', 'ignore'], shell: 'bash',
+        encoding: 'utf-8',
+        timeout: 8000,
+        stdio: ['ignore', 'pipe', 'ignore'],
+        shell: 'bash',
       });
       const [resolved = ''] = out.trim().split('\n');
       if (resolved.startsWith('/')) return resolved;
-    } catch { /* fall through */ }
+    } catch {
+      /* fall through */
+    }
     return cliPath;
   }
 }

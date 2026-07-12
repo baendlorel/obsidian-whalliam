@@ -868,6 +868,22 @@ function initializeInputToolbar(
     };
   };
 
+  // Context toggle button in nav row
+  const contextToggleBtn = dom.navRowEl.createDiv({ cls: 'whalliam-context-toggle' });
+  contextToggleBtn.setAttribute('aria-label', 'Toggle current note context');
+  setIcon(contextToggleBtn, 'file-text');
+  contextToggleBtn.addClass('is-active');
+  contextToggleBtn.addEventListener('click', () => {
+    const mgr = tab.ui.fileContextManager;
+    if (!mgr) return;
+    const enabled = mgr.toggleContext();
+    if (enabled) {
+      contextToggleBtn.addClass('is-active');
+    } else {
+      contextToggleBtn.removeClass('is-active');
+    }
+  });
+
   const toolbarComponents = createInputToolbar(inputToolbar, {
     getUIConfig: () => {
       if (tab.lifecycleState === 'blank') {

@@ -40,6 +40,9 @@ export class FileContextManager {
   // Current note (shown as chip)
   private currentNotePath: string | null = null;
 
+  // Context toggle: when false, current note is not auto-attached
+  private contextEnabled = true;
+
   // MCP server support
   private onMcpMentionChange: ((servers: Set<string>) => void) | null = null;
 
@@ -115,6 +118,27 @@ export class FileContextManager {
     return this.currentNotePath;
   }
 
+  /** Toggle whether current note is auto-attached as context. */
+  toggleContext(): boolean {
+    this.contextEnabled = !this.contextEnabled;
+    if (!this.contextEnabled) {
+      // Remove current note chip when disabled
+      if (this.currentNotePath) {
+        this.state.detachFile(this.currentNotePath);
+        this.currentNotePath = null;
+        this.refreshCurrentNoteChip();
+      }
+    } else {
+      // Re-attach active file when enabled
+      this.autoAttachActiveFile();
+    }
+    return this.contextEnabled;
+  }
+
+  isContextEnabled(): boolean {
+    return this.contextEnabled;
+  }
+
   getAttachedFiles(): Set<string> {
     return this.state.getAttachedFiles();
   }
@@ -163,6 +187,7 @@ export class FileContextManager {
 
   /** Auto-attaches the currently focused file (for new sessions). */
   autoAttachActiveFile() {
+    if (!this.contextEnabled) return;
     const activeFile = this.app.workspace.getActiveFile();
     if (activeFile && !this.hasExcludedTag(activeFile)) {
       const normalizedPath = this.normalizePathForVault(activeFile.path);
@@ -176,6 +201,7 @@ export class FileContextManager {
 
   /** Handles file open event. */
   handleFileOpen(file: TFile) {
+    if (!this.contextEnabled) return;
     const normalizedPath = this.normalizePathForVault(file.path);
     if (!normalizedPath) return;
 
