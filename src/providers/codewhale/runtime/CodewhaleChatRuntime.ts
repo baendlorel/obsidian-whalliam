@@ -474,16 +474,42 @@ export class CodewhaleChatRuntime implements ChatRuntime {
     }
 
     switch (event) {
-      case 'item.delta': {
-        const kind = (payload.kind as string) ?? '';
-        const delta = (payload.delta as string) ?? '';
-        if (kind === 'agent_reasoning' || kind === 'thinking') {
-          chunks.push({ type: 'thinking', content: delta });
-        } else if (kind === 'agent_message' || kind === 'text') {
-          chunks.push({ type: 'text', content: delta });
-        } else if (kind === 'tool_output') {
-          chunks.push({ type: 'tool_output', id: evt.item_id!, content: delta });
+      case 'item.started': {
+        const item = (payload.item as Record<string, unknown>) ?? payload;
+        const itemKind = ((item.kind as string) ?? '').toLowerCase();
+        if (itemKind === 'tool_call' || itemKind === 'command_execution' || itemKind === 'file_change') {
+          const toolName = (item.tool_name as string) ?? (item.summary as string)?.split('(')[0] ?? itemKind;
+          chunks.push({
+            type: 'tool_use',
+            id: (item.id as string) ?? evt.item_id!,
+            name: toolName,
+            input: (item.input as Record<string, unknown>) ?? (item.detail as Record<string, unknown>) ?? {},
+          });
         }
+        break;
+      }
+
+      case 'item.completed': {
+        const item = (payload.item as Record<string, unknown>) ?? payload;
+        const itemKind = ((item.kind as string) ?? '').toLowerCase();
+        if (itemKind === 'tool_call' || itemKind === 'command_execution' || itemKind === 'file_change') {
+          chunks.push({
+            type: 'tool_result',
+            id: (item.id as string) ?? evt.item_id!,
+            content: (item.summary as string) ?? (item.result as string) ?? '',
+          });
+        }
+        break;
+      }
+
+      case 'item.failed':
+      case 'item.interrupted': {
+        const item = (payload.item as Record<string, unknown>) ?? payload;
+        chunks.push({
+          type: 'tool_result',
+          id: (item.id as string) ?? evt.item_id!,
+          content: `Failed: ${(item.error as string) ?? (payload.detail as string) ?? 'unknown error'}`,
+        });
         break;
       }
 
@@ -496,6 +522,19 @@ export class CodewhaleChatRuntime implements ChatRuntime {
             name: (item.summary as string)?.split('(')[0] ?? 'unknown',
             input: (item.detail as Record<string, unknown> | undefined) ?? {},
           });
+        }
+        break;
+      }
+
+      case 'item.delta': {
+        const kind = (payload.kind as string) ?? '';
+        const delta = (payload.delta as string) ?? '';
+        if (kind === 'agent_reasoning' || kind === 'thinking' || kind === 'reasoning') {
+          chunks.push({ type: 'thinking', content: delta });
+        } else if (kind === 'agent_message' || kind === 'text') {
+          chunks.push({ type: 'text', content: delta });
+        } else if (kind === 'tool_output') {
+          chunks.push({ type: 'tool_output', id: evt.item_id!, content: delta });
         }
         break;
       }
