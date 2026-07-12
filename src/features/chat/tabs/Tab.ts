@@ -1,5 +1,5 @@
 import type { Component } from 'obsidian';
-import { Notice, Platform } from 'obsidian';
+import { Notice, Platform, setIcon } from 'obsidian';
 
 import { getHiddenProviderCommandSet } from '../../../core/providers/commands/hiddenCommands';
 import type { ProviderCommandDropdownConfig } from '../../../core/providers/commands/ProviderCommandCatalog';
@@ -868,11 +868,22 @@ function initializeInputToolbar(
     };
   };
 
-  // Context toggle button in nav row
+  // Context toggle button in nav row (icon + filename)
   const contextToggleBtn = dom.navRowEl.createDiv({ cls: 'whalliam-context-toggle' });
-  contextToggleBtn.setAttribute('aria-label', 'Toggle current note context');
-  setIcon(contextToggleBtn, 'file-text');
+  const contextToggleIcon = contextToggleBtn.createSpan({ cls: 'whalliam-context-toggle-icon' });
+  setIcon(contextToggleIcon, 'file-text');
+  const contextToggleLabel = contextToggleBtn.createSpan({ cls: 'whalliam-context-toggle-label' });
   contextToggleBtn.addClass('is-active');
+  const updateContextToggleLabel = () => {
+    const path = tab.ui.fileContextManager?.getCurrentNotePath();
+    if (path) {
+      const name = path.split('/').pop() || path;
+      contextToggleLabel.setText(name);
+    } else {
+      contextToggleLabel.setText('');
+    }
+  };
+  updateContextToggleLabel();
   contextToggleBtn.addEventListener('click', () => {
     const mgr = tab.ui.fileContextManager;
     if (!mgr) return;
@@ -882,6 +893,7 @@ function initializeInputToolbar(
     } else {
       contextToggleBtn.removeClass('is-active');
     }
+    updateContextToggleLabel();
   });
 
   const toolbarComponents = createInputToolbar(inputToolbar, {
@@ -1040,6 +1052,11 @@ function initializeInputToolbar(
   // Sync @-mentions to UI selector
   tab.ui.fileContextManager?.setOnMcpMentionChange((servers) => {
     tab.ui.mcpServerSelector?.addMentionedServers(servers);
+  });
+
+  // Update context toggle label when current note changes
+  tab.ui.fileContextManager?.setOnNoteChanged(() => {
+    updateContextToggleLabel();
   });
 
   // Wire external context changes

@@ -296,6 +296,14 @@ export class FileContextManager {
   private refreshCurrentNoteChip(): void {
     this.chipsView.renderCurrentNote(this.currentNotePath);
     this.callbacks.onChipsChanged?.();
+    this.onNoteChanged?.();
+  }
+
+  private onNoteChanged: (() => void) | null = null;
+
+  /** Sets a callback that fires when the current note changes. */
+  setOnNoteChanged(callback: (() => void) | null): void {
+    this.onNoteChanged = callback;
   }
 
   private handleFileRenamed(oldPath: string, newPath: string) {

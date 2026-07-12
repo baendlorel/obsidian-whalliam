@@ -17,7 +17,7 @@ export const DEFAULT_CODEWHALE_PROVIDER_SETTINGS: Readonly<CodewhaleProviderSett
   port: 7878,
   authToken: '',
   model: 'glm-5.2',
-  mode: 'agent',
+  mode: 'yolo',
   effort: 'high',
   skillsDir: '',
   customModels: '',
