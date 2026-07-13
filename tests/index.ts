@@ -1,5 +1,6 @@
-import { spawn } from 'node:child_process';
+import { execSync } from 'node:child_process';
 import { AUTH_TOKEN } from './.env.js';
+import { createBackend } from './backend.js';
 
 function post(url: string, data?: any) {
   return fetch(`http://127.0.0.1:20000/${url}`, {
@@ -32,26 +33,32 @@ function get(url: string) {
     });
 }
 // '--auth-token', AUTH_TOKEN
-const codew = spawn('codewhale', ['app-server', '--http', '--port', '20000', '--auth-token', AUTH_TOKEN], {
-  stdio: 'pipe',
-});
 
-const { promise: runtimeAPIPromise, resolve: resolveRuntimeAPI } = Promise.withResolvers<void>();
+interface Skill {
+  name: string;
+  description: string;
+  path: string;
+  enabled: boolean;
+  is_bundled: boolean;
+}
 
-codew.stdout.on('data', (data: Buffer) => {
-  const s = data.toString();
-
-  console.log('来信了');
-  console.log(s);
-
-  if (s.includes('Runtime API listening')) {
-    resolveRuntimeAPI();
-  }
-});
+interface SkillsResponse {
+  directory: string;
+  directories: string[];
+  warnings: string[];
+  skills: Skill[];
+}
 
 async function main() {
-  await runtimeAPIPromise;
-  get('v1/skills').then(console.log);
+  const codew = await createBackend(AUTH_TOKEN);
+  console.log('等待后端启动...');
+  console.log('后端启动完成');
+  console.log('访问skills');
+  const a = (await get('v1/skills')) as SkillsResponse;
+  console.log(a.skills.map((v) => v.name));
+  if (codew.pid) {
+    execSync(`kill -9 ${codew.pid}`);
+  }
 }
 
 main();
