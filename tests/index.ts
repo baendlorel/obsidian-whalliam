@@ -57,7 +57,7 @@ async function main() {
   const a = (await get('v1/skills')) as SkillsResponse;
   console.log(a.skills.map((v) => v.name));
   if (codew.pid) {
-    execSync(`kill -9 ${codew.pid}`);
+    process.kill(-codew.pid, 'SIGKILL');
   }
 }
 

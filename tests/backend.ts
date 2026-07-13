@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process';
 export function createBackend(AUTH_TOKEN: string) {
   const proc = spawn('codewhale', ['app-server', '--http', '--port', '20000', '--auth-token', AUTH_TOKEN], {
     stdio: 'pipe',
+    detached: true, // ! This is necessary to allow killing the process and its children later
   });
 
   const { promise, resolve: resolveRuntimeAPI } = Promise.withResolvers<void>();
