@@ -12,6 +12,7 @@
     "dev": "pnpm build:css && node esbuild.config.mjs",
     "build": "node scripts/build.mjs production",
     "typecheck": "tsc --noEmit",
+    "test": "tsx tests/index.ts",
     "lint": "oxlint -c .oxlintrc.json . --tsconfig tsconfig.json",
     "lint:fix": "oxlint -c .oxlintrc.json . --tsconfig tsconfig.json --fix",
     "version": "node scripts/sync-version.js && git add manifest.json"
@@ -31,6 +32,7 @@
     "obsidian": "^1.12.3",
     "oxlint": "^1.72.0",
     "tslib": "^2.8.1",
+    "tsx": "^4.23.1",
     "typescript": "^6.0.3"
   },
   "dependencies": {
