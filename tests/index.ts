@@ -10,12 +10,10 @@ function post(url: string, data?: any) {
       Authorization: `Bearer ${AUTH_TOKEN}`,
     },
     body: data ? JSON.stringify(data) : '{}',
-  })
-    .then((v) => v.json())
-    .catch((e) => {
-      console.error('post后端出错', e);
-      return null;
-    });
+  }).catch((e) => {
+    console.error('post后端出错', e);
+    return null;
+  });
 }
 
 function get(url: string) {
@@ -25,12 +23,10 @@ function get(url: string) {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${AUTH_TOKEN}`,
     },
-  })
-    .then((v) => v.json())
-    .catch((e) => {
-      console.error('get后端出错', e);
-      return null;
-    });
+  }).catch((e) => {
+    console.error('get后端出错', e);
+    return null;
+  });
 }
 // '--auth-token', AUTH_TOKEN
 
@@ -51,11 +47,10 @@ interface SkillsResponse {
 
 async function main() {
   const codew = await createBackend(AUTH_TOKEN);
-  console.log('等待后端启动...');
-  console.log('后端启动完成');
-  console.log('访问skills');
-  const a = (await get('v1/skills')) as SkillsResponse;
-  console.log(a.skills.map((v) => v.name));
+  // const a = (await get('v1/skills').then((v) => v?.json())) as SkillsResponse;
+  // console.log(a.skills.map((v) => v.name));
+  const v = await get('v1/models').then((v) => v?.text());
+  console.log('models', typeof v, v);
   if (codew.pid) {
     process.kill(-codew.pid, 'SIGKILL');
   }

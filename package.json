@@ -13,6 +13,7 @@
     "build": "node scripts/build.mjs production",
     "typecheck": "tsc --noEmit",
     "test": "tsx tests/index.ts",
+    "testhub": "tsx tests/tokenhub.ts",
     "lint": "oxlint -c .oxlintrc.json . --tsconfig tsconfig.json",
     "lint:fix": "oxlint -c .oxlintrc.json . --tsconfig tsconfig.json --fix",
     "version": "node scripts/sync-version.js && git add manifest.json"
